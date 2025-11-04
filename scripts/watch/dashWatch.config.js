@@ -17,6 +17,10 @@ function getProjectBuildTargets(project) {
         buildTargets.push(['ag-dash-docs', ['generate-examples']]);
     } else if (PACKAGE_PROJECTS.includes(project)) {
         buildTargets.push(['ag-dash-docs', ['generate-doc-references']]);
+
+        if (project === 'ag-dash') {
+            buildTargets.push(['ag-dash', ['build:css']]);
+        }
     }
 
     return buildTargets;
