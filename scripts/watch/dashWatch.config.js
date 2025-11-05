@@ -11,7 +11,7 @@ function getIgnoredProjects() {
 function getProjectBuildTargets(project) {
     const buildTargets = [];
 
-    if (project.startsWith('ag-dash-docs-')) {
+    if (project.startsWith('ag-dash-docs')) {
         buildTargets.push([project, ['generate'], 'watch']);
     } else if (EXAMPLE_GENERATOR_PROJECTS.includes(project)) {
         buildTargets.push(['ag-dash-docs', ['generate-examples']]);
@@ -19,7 +19,7 @@ function getProjectBuildTargets(project) {
         buildTargets.push(['ag-dash-docs', ['generate-doc-references']]);
 
         if (project === 'ag-dash') {
-            buildTargets.push(['ag-dash', ['build:css']]);
+            buildTargets.push(['ag-dash', ['build:types', 'build:umd', 'build:css']]);
         }
     }
 
@@ -33,7 +33,15 @@ const externalBuildTriggers = [
 
 module.exports = {
     ignoredProjects: getIgnoredProjects(),
-    devServerReloadTargets: ['generate', 'generate-doc-references', 'build', 'build:css', 'generate-examples'],
+    devServerReloadTargets: [
+        'generate',
+        'generate-doc-references',
+        'build',
+        'build:css',
+        'build:types',
+        'build:package',
+        'generate-examples',
+    ],
     getProjectBuildTargets,
     externalBuildTriggers,
 };
