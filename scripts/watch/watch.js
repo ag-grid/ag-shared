@@ -523,7 +523,7 @@ Run these commands to reset the workspace:
 
 function respawnError() {
     error(`Repeated respawn detected!
-        
+
     The Nx Daemon maybe erroring, try restarting it to resolve with either:
     - \`yarn nx daemon --stop\`
     - \`yarn\`
