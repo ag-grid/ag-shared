@@ -36,7 +36,6 @@ module.exports = {
     devServerReloadTargets: [
         'generate',
         'generate-doc-references',
-        'build:types',
         'build:umd',
         'build:css',
         'build:package',
