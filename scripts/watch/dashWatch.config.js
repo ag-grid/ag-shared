@@ -19,7 +19,7 @@ function getProjectBuildTargets(project) {
         buildTargets.push(['ag-dash-docs', ['generate-doc-references']]);
 
         if (project === 'ag-dash') {
-            buildTargets.push(['ag-dash', ['build:types', 'build:umd', 'build:css'], 'watch']);
+            buildTargets.push(['ag-dash', ['build:types', 'build:umd'], 'watch']);
         }
     }
 
@@ -33,14 +33,7 @@ const externalBuildTriggers = [
 
 module.exports = {
     ignoredProjects: getIgnoredProjects(),
-    devServerReloadTargets: [
-        'generate',
-        'generate-doc-references',
-        'build:umd',
-        'build:css',
-        'build:package',
-        'generate-examples',
-    ],
+    devServerReloadTargets: ['generate', 'generate-doc-references', 'build:umd', 'build:package', 'generate-examples'],
     getProjectBuildTargets,
     externalBuildTriggers,
 };
