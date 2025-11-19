@@ -19,7 +19,7 @@ function getProjectBuildTargets(project) {
         buildTargets.push(['ag-dash-docs', ['generate-doc-references']]);
 
         if (project === 'ag-dash') {
-            buildTargets.push(['ag-dash', ['build:types', 'build:umd'], 'watch']);
+            buildTargets.push(['ag-dash', ['build:umd', 'build'], 'watch']);
         }
     }
 
