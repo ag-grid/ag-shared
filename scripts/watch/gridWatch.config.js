@@ -1,6 +1,6 @@
 const shouldBuildFrameworks = process.env.BUILD_FWS === '1';
 
-const BASE_IGNORED_PROJECTS = ['all', 'ag-dash-docs'];
+const BASE_IGNORED_PROJECTS = ['all', 'ag-grid-docs'];
 const FRAMEWORK_PROJECTS = ['ag-grid-angular', 'ag-grid-react', 'ag-grid-vue3'];
 const PACKAGE_PROJECTS = ['ag-grid-community', 'ag-grid-enterprise'];
 const EXAMPLE_GENERATOR_PROJECTS = ['ag-grid-generate-example-files'];
@@ -18,13 +18,13 @@ function getIgnoredProjects() {
 function getProjectBuildTargets(project) {
     const buildTargets = [];
 
-    if (project.startsWith('ag-dash-docs-')) {
+    if (project.startsWith('ag-grid-docs-')) {
         buildTargets.push([project, ['generate'], 'watch']);
     } else if (EXAMPLE_GENERATOR_PROJECTS.includes(project)) {
-        buildTargets.push(['ag-dash-docs', ['generate-examples']]);
+        buildTargets.push(['ag-grid-docs', ['generate-examples']]);
     } else {
         if (PACKAGE_PROJECTS.includes(project)) {
-            buildTargets.push(['ag-dash-docs', ['generate-doc-references']]);
+            buildTargets.push(['ag-grid-docs', ['generate-doc-references']]);
 
             if (project === 'ag-grid-community') {
                 buildTargets.push(['ag-grid-community', ['build:css']]);
