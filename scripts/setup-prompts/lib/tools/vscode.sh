@@ -35,18 +35,28 @@ setup_vscode() {
             relative_source="../../tools/prompts/commands"
         fi
 
-        # Link common prompts
-        for prompt_file in "$commands_dir"/*.md; do
-            if [[ -f "$prompt_file" ]]; then
-                local filename
-                filename=$(basename "$prompt_file")
-                local copilot_prompt="$REPO_ROOT/.github/prompts/${filename%.md}.prompt.md"
-
-                if [[ ! -f "$copilot_prompt" ]]; then
-                    ln -sf "$relative_source/$filename" "$copilot_prompt"
-                fi
+        # Link prompts from commands (recursive search for subdirectories)
+        while IFS= read -r -d '' prompt_file; do
+            local filename
+            filename=$(basename "$prompt_file")
+            # Get relative path from commands_dir (e.g., "code/cleanup.md")
+            local rel_path="${prompt_file#${commands_dir}/}"
+            # Get subfolder name for prefix (e.g., "code" from "code/cleanup.md")
+            local subfolder
+            subfolder=$(dirname "$rel_path")
+            # Build prompt name with subfolder prefix (e.g., "code-cleanup.prompt.md")
+            local prompt_name
+            if [[ "$subfolder" != "." ]]; then
+                prompt_name="${subfolder}-${filename%.md}.prompt.md"
+            else
+                prompt_name="${filename%.md}.prompt.md"
             fi
-        done
+            local copilot_prompt="$REPO_ROOT/.github/prompts/$prompt_name"
+
+            # Remove existing and create new symlink (later sources override earlier)
+            rm -f "$copilot_prompt"
+            ln -sf "$relative_source/$rel_path" "$copilot_prompt"
+        done < <(find "$commands_dir" -type f -name '*.md' -print0 2>/dev/null)
     done
 
     echo "✓ VS Code / GitHub Copilot setup complete"

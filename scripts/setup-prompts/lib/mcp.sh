@@ -121,6 +121,50 @@ configure_mcp() {
     # add_sse_mcp atlassian project https://mcp.atlassian.com/v1/sse
 }
 
+# Setup Gemini MCP configuration
+# Merges .mcp.json sources and strips unsupported fields (like 'type')
+setup_gemini_mcp() {
+    local target_file="$REPO_ROOT/$1"
+
+    # Check if jq is available
+    if ! command -v jq >/dev/null 2>&1; then
+        echo "Warning: jq not found. Cannot setup MCP config."
+        echo "Install with: brew install jq"
+        return 1
+    fi
+
+    local sources
+    read -ra sources <<< "$(get_mcp_sources)"
+
+    if [[ ${#sources[@]} -eq 0 ]]; then
+        return 0
+    fi
+
+    # Remove existing file
+    if [[ -L "$target_file" || -f "$target_file" ]]; then
+        rm -f "$target_file"
+    fi
+
+    # Start with empty base
+    local merged='{"mcpServers":{}}'
+
+    # Merge each source in order (later overrides earlier)
+    for source in "${sources[@]}"; do
+        if [[ -f "$source" ]]; then
+            # Deep merge mcpServers objects, stripping 'type' field (unsupported by Gemini)
+            merged=$(echo "$merged" | jq --slurpfile new "$source" '
+                .mcpServers = (.mcpServers + ($new[0].mcpServers // {} | map_values(del(.type))))
+            ')
+        fi
+    done
+
+    # Write merged config
+    mkdir -p "$(dirname "$target_file")"
+    echo "$merged" | jq '.' > "$target_file"
+
+    echo "✓ Merged MCP config from ${#sources[@]} source(s) into $1"
+}
+
 # Setup VS Code MCP configuration
 # Merges .mcp.json sources into VS Code format
 setup_vscode_mcp() {

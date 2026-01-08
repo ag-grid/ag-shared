@@ -18,6 +18,58 @@ setup_cursor_worktrees() {
     fi
 }
 
+# Setup Cursor rules from guides in all prompt sources
+# Cursor uses folder-based rules: .cursor/rules/{rule-name}/RULE.md
+# Only includes files with YAML frontmatter (starting with ---)
+# Usage: setup_cursor_rules ".cursor/rules"
+setup_cursor_rules() {
+    local target_dir="$REPO_ROOT/$1"
+
+    mkdir -p "$target_dir"
+
+    local count=0
+    local sources
+    read -ra sources <<< "$(get_prompt_sources)"
+
+    for source in "${sources[@]}"; do
+        local source_dir="$source/guides"
+        if [[ ! -d "$source_dir" ]]; then
+            continue
+        fi
+
+        # Calculate relative path (extra ../ for rule subdirectory)
+        local relative_source
+        if [[ "$source" == "$AG_SHARED_PROMPTS" ]]; then
+            relative_source="$(path_to_root "$1")../external/ag-shared/prompts/guides"
+        elif [[ "$source" == "$PROMPTS_SYMLINK" ]]; then
+            relative_source="$(path_to_root "$1")../external/prompts/guides"
+        elif [[ "$source" == "$TOOLS_PROMPTS" ]]; then
+            relative_source="$(path_to_root "$1")../tools/prompts/guides"
+        fi
+
+        for file in "$source_dir"/*.md; do
+            if [[ -f "$file" ]]; then
+                # Check if file starts with YAML frontmatter (---)
+                if head -n 1 "$file" | grep -q '^---$'; then
+                    local filename
+                    filename=$(basename "$file" .md)
+                    local rule_dir="$target_dir/$filename"
+
+                    # Remove existing rule directory/symlink
+                    rm -rf "$rule_dir"
+                    mkdir -p "$rule_dir"
+
+                    # Symlink the guide as RULE.md
+                    ln -sf "$relative_source/$(basename "$file")" "$rule_dir/RULE.md"
+                    count=$((count+1))
+                fi
+            fi
+        done
+    done
+
+    echo "✓ Setup $count Cursor rules in $target_dir"
+}
+
 setup_cursor() {
     echo "Setting up Cursor..."
 
@@ -29,6 +81,9 @@ setup_cursor() {
 
     # Setup worktrees configuration
     setup_cursor_worktrees .cursor/worktrees.json
+
+    # Setup rules from guides
+    setup_cursor_rules .cursor/rules
 
     echo "✓ Cursor setup complete"
 }
