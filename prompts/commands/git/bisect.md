@@ -8,17 +8,17 @@ Your goal is to systematically bisect the git history to find the exact commit t
 
 If the user provides a command option of `help`:
 
-- Explain how to use this prompt.
-- Explain if they are missing any prerequisites or tooling requirements.
-- DO NOT proceed, exit the prompt immediately after these steps.
+-   Explain how to use this prompt.
+-   Explain if they are missing any prerequisites or tooling requirements.
+-   DO NOT proceed, exit the prompt immediately after these steps.
 
 ## 1. IMPORTANT TOOLING REQUIREMENTS - STOP IF THESE ARE NOT MET
 
-- Git CLI must be available.
-- The repository must be in a clean state or have only intended changes.
-- Test commands must be executable (e.g., `nx test`, `yarn test`).
-- Use `NX_DAEMON=false` to avoid async Nx daemon project graph re-calculation from affecting execution stability.
-- **Worktree support**: The script handles git worktrees automatically, but ensure node_modules are accessible (either in the worktree or the main repository).
+-   Git CLI must be available.
+-   The repository must be in a clean state or have only intended changes.
+-   Test commands must be executable (e.g., `nx test`, `yarn test`).
+-   Use `NX_DAEMON=false` to avoid async Nx daemon project graph re-calculation from affecting execution stability.
+-   **Worktree support**: The script handles git worktrees automatically, but ensure node_modules are accessible (either in the worktree or the main repository).
 
 ## 2. Workflow
 
@@ -26,21 +26,21 @@ If the user provides a command option of `help`:
 
 The user provides `${ARGUMENTS}` which should contain:
 
-- **Bad commit/branch**: The commit or branch where the issue is present (default: `HEAD` or `latest`)
-- **Good commit/branch**: The commit or branch where the issue is NOT present (e.g., `origin/bX.Y.Z`)
-- **Test command**: The command to run to verify if the issue is present (default: `${ARGUMENTS}` if it looks like a test command)
+-   **Bad commit/branch**: The commit or branch where the issue is present (default: `HEAD` or `latest`)
+-   **Good commit/branch**: The commit or branch where the issue is NOT present (e.g., `origin/bX.Y.Z`)
+-   **Test command**: The command to run to verify if the issue is present (default: `${ARGUMENTS}` if it looks like a test command)
 
 Parse `${ARGUMENTS}` to extract:
 
-- `BAD_REF`: Commit/branch where tests fail
-- `GOOD_REF`: Commit/branch where tests pass
-- `TEST_COMMAND`: Command to execute for each bisect step
+-   `BAD_REF`: Commit/branch where tests fail
+-   `GOOD_REF`: Commit/branch where tests pass
+-   `TEST_COMMAND`: Command to execute for each bisect step
 
 **Example argument formats:**
 
-- `bad=HEAD good=origin/b12.3.0 test="yarn nx test package-name --testPathPattern='test.test.ts'"`
-- `HEAD origin/b12.3.0 "yarn nx test package-name --testPathPattern='test.test.ts'"`
-- `"yarn nx test package-name --testPathPattern='test.test.ts'"` (uses HEAD as bad, prompts for good)
+-   `bad=HEAD good=origin/b12.3.0 test="yarn nx test package-name --testPathPattern='test.test.ts'"`
+-   `HEAD origin/b12.3.0 "yarn nx test package-name --testPathPattern='test.test.ts'"`
+-   `"yarn nx test package-name --testPathPattern='test.test.ts'"` (uses HEAD as bad, prompts for good)
 
 ### Phase 1: Verify the Issue
 
@@ -182,6 +182,7 @@ If automated bisect encounters issues, proceed manually:
     ```
 
 3. **Mark result:**
+
     - If tests **pass** (issue not present):
         ```bash
         git bisect good
@@ -233,10 +234,10 @@ Provide a summary:
 
 **Culprit commit details:**
 
-- Author: ${AUTHOR}
-- Date: ${DATE}
-- Message: ${COMMIT_MESSAGE}
-- Files changed: ${FILES_CHANGED}
+-   Author: ${AUTHOR}
+-   Date: ${DATE}
+-   Message: ${COMMIT_MESSAGE}
+-   Files changed: ${FILES_CHANGED}
 
 **Next steps:**
 
@@ -249,12 +250,12 @@ Provide a summary:
 
 ### Test Command Requirements
 
-- **Exit codes**: The test command must exit with code 0 on success and non-zero on failure.
-- **Timeout**: Long-running tests may need timeouts. Consider wrapping:
+-   **Exit codes**: The test command must exit with code 0 on success and non-zero on failure.
+-   **Timeout**: Long-running tests may need timeouts. Consider wrapping:
     ```bash
     timeout 60 ${TEST_COMMAND}
     ```
-- **Multiple tests**: If testing multiple test files, combine with `&&`:
+-   **Multiple tests**: If testing multiple test files, combine with `&&`:
     ```bash
     yarn nx test package1 --testPathPattern="test1.test.ts" && \
     yarn nx test package2 --testPathPattern="test2.test.ts"
@@ -262,26 +263,26 @@ Provide a summary:
 
 ### Handling Flaky Tests
 
-- If tests are flaky (sometimes pass, sometimes fail), consider:
-    - Running tests multiple times: `for i in {1..3}; do ${TEST_COMMAND} && break; done`
-    - Using a more lenient script that allows some failures
-    - Documenting the flakiness in the report
+-   If tests are flaky (sometimes pass, sometimes fail), consider:
+    -   Running tests multiple times: `for i in {1..3}; do ${TEST_COMMAND} && break; done`
+    -   Using a more lenient script that allows some failures
+    -   Documenting the flakiness in the report
 
 ### Skipping Commits
 
 Always skip commits that:
 
-- Have build/compilation errors preventing tests from running
-- Have merge conflicts
-- Fail tests in unexpected ways (different error than the target issue)
-- Are known to be broken for unrelated reasons
+-   Have build/compilation errors preventing tests from running
+-   Have merge conflicts
+-   Fail tests in unexpected ways (different error than the target issue)
+-   Are known to be broken for unrelated reasons
 
 ### Performance Considerations
 
-- Use `NX_DAEMON=false` to avoid async daemon issues
-- Consider using `--testPathPattern` to limit test scope
-- For very large bisect ranges, consider narrowing the range first
-- **Worktree performance**: If using a worktree, builds may be slower if node_modules are shared
+-   Use `NX_DAEMON=false` to avoid async daemon issues
+-   Consider using `--testPathPattern` to limit test scope
+-   For very large bisect ranges, consider narrowing the range first
+-   **Worktree performance**: If using a worktree, builds may be slower if node_modules are shared
 
 ## 5. Common Patterns
 
@@ -295,9 +296,9 @@ TEST_COMMAND="yarn nx test package1 --testPathPattern='test1.test.ts' && \
 
 **Important:** When testing files in different packages, ensure:
 
-- Each package name matches the actual package structure
-- Test files exist in the specified packages
-- Use `--passWithNoTests` flag if a test file might not exist in older commits
+-   Each package name matches the actual package structure
+-   Test files exist in the specified packages
+-   Use `--passWithNoTests` flag if a test file might not exist in older commits
 
 ### Testing with Specific Test Names
 
@@ -336,12 +337,12 @@ If bisect gets stuck or produces unexpected results:
 
 **Format:** `${ARGUMENTS}` can be:
 
-- `bad=<ref> good=<ref> test="<command>"` - Full specification
-- `<bad-ref> <good-ref> "<test-command>"` - Positional arguments
-- `"<test-command>"` - Test command only (prompts for bad/good refs)
+-   `bad=<ref> good=<ref> test="<command>"` - Full specification
+-   `<bad-ref> <good-ref> "<test-command>"` - Positional arguments
+-   `"<test-command>"` - Test command only (prompts for bad/good refs)
 
 **Examples:**
 
-- `/git/bisect bad=HEAD good=origin/b12.3.0 test="yarn nx test package-name --testPathPattern='test.test.ts'"`
-- `/git/bisect HEAD origin/b12.3.0 "yarn nx test package-name --testPathPattern='test.test.ts'"`
-- `/git/bisect "yarn nx test package-name --testPathPattern='test.test.ts'"`
+-   `/git/bisect bad=HEAD good=origin/b12.3.0 test="yarn nx test package-name --testPathPattern='test.test.ts'"`
+-   `/git/bisect HEAD origin/b12.3.0 "yarn nx test package-name --testPathPattern='test.test.ts'"`
+-   `/git/bisect "yarn nx test package-name --testPathPattern='test.test.ts'"`

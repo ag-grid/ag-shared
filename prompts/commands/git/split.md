@@ -6,15 +6,15 @@ You are an expert in Git history management and code refactoring. Your goal is t
 
 If the user provides a command option of `help`:
 
-- Explain how to use this prompt.
-- Explain if they are missing any prerequisites or tooling requirements.
-- DO NOT proceed, exit the prompt immediately after these steps.
+-   Explain how to use this prompt.
+-   Explain if they are missing any prerequisites or tooling requirements.
+-   DO NOT proceed, exit the prompt immediately after these steps.
 
 ## 1. IMPORTANT TOOLING REQUIREMENTS - STOP IF THESE ARE NOT MET
 
-- Git CLI must be available
-- Working tree should be clean (no uncommitted changes)
-- You should be on a feature branch, not the main branch
+-   Git CLI must be available
+-   Working tree should be clean (no uncommitted changes)
+-   You should be on a feature branch, not the main branch
 
 ## 2. Prerequisites Check
 
@@ -33,6 +33,7 @@ fi
 ## 3. The Branch-Merge Technique
 
 This technique preserves git history by:
+
 1. Creating a branch from the file's initial commit
 2. Making the split changes on that branch
 3. Merging back with special strategy to preserve history
@@ -53,10 +54,11 @@ wc -l "path/to/large-file.ts"
 ### Step 2: Plan the Split
 
 Before splitting, identify:
-- **Logical groupings**: Functions/classes that belong together
-- **Dependencies**: What each group imports/exports
-- **Naming**: What to call the new files
-- **Barrel exports**: How to maintain backward compatibility
+
+-   **Logical groupings**: Functions/classes that belong together
+-   **Dependencies**: What each group imports/exports
+-   **Naming**: What to call the new files
+-   **Barrel exports**: How to maintain backward compatibility
 
 ### Step 3: Create History Branch
 
@@ -141,16 +143,16 @@ git commit -C HEAD --amend
 
 ## 6. Best Practices
 
-- **Keep related code together**: Don't split arbitrarily by line count
-- **Maintain barrel exports**: Re-export from original location if it's a public API
-- **Update imports atomically**: All import changes in one commit
-- **Verify history**: Always check `git log --follow` and `git blame` after splitting
-- **Run tests**: Ensure nothing is broken after the split
-- **Document**: Add JSDoc or README explaining the new module structure
+-   **Keep related code together**: Don't split arbitrarily by line count
+-   **Maintain barrel exports**: Re-export from original location if it's a public API
+-   **Update imports atomically**: All import changes in one commit
+-   **Verify history**: Always check `git log --follow` and `git blame` after splitting
+-   **Run tests**: Ensure nothing is broken after the split
+-   **Document**: Add JSDoc or README explaining the new module structure
 
 ## 7. Common Pitfalls
 
-- **Don't force push** if others are working on the branch
-- **Don't split on main** - always use a feature branch
-- **Don't forget barrel exports** if the original file was part of public API
-- **Don't break circular dependencies** - plan the split to avoid them
+-   **Don't force push** if others are working on the branch
+-   **Don't split on main** - always use a feature branch
+-   **Don't forget barrel exports** if the original file was part of public API
+-   **Don't break circular dependencies** - plan the split to avoid them

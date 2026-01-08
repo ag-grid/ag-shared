@@ -8,21 +8,21 @@ Your goal is to review changes on the current branch and productionize the code 
 
 If the user provides a command option of `help`:
 
-- Explain how to use this prompt.
-- Explain if they are missing any prerequisites or tooling requirements.
-- DO NOT proceed, exit the prompt immediately after these steps.
+-   Explain how to use this prompt.
+-   Explain if they are missing any prerequisites or tooling requirements.
+-   DO NOT proceed, exit the prompt immediately after these steps.
 
 ## 1. IMPORTANT TOOLING REQUIREMENTS - STOP IF THESE ARE NOT MET
 
-- Git CLI must be available to determine the current branch and base branch.
-- The working tree should be clean or have only the intended changes.
+-   Git CLI must be available to determine the current branch and base branch.
+-   The working tree should be clean or have only the intended changes.
 
 ## 2. General Context
 
-- This project is an Nx monorepo with multiple packages.
-- Release branches are named `bX.Y.Z` and follow semantic versioning.
-- The main branch is `latest`.
-- Code quality standards are documented in `tools/prompts/guides/code-quality.md` or `external/ag-shared/prompts/guides/code-quality.md`.
+-   This project is an Nx monorepo with multiple packages.
+-   Release branches are named `bX.Y.Z` and follow semantic versioning.
+-   The main branch is `latest`.
+-   Code quality standards are documented in `tools/prompts/guides/code-quality.md` or `external/ag-shared/prompts/guides/code-quality.md`.
 
 ## 3. Workflow
 
@@ -69,6 +69,7 @@ If the user provides a command option of `help`:
     ```
 
     If there are uncommitted changes, ask the user if they want to:
+
     - Stash changes and distil committed changes only
     - Include uncommitted changes in the distillation
     - Stop and let them commit first
@@ -78,17 +79,20 @@ If the user provides a command option of `help`:
 For each changed file in the diff, analyze for:
 
 1. **Code Bloat:**
+
     - **Redundant computed values**: Are there stored values that should be computed via functions/getters?
     - **Dead code**: Unused methods, parameters, properties, imports?
     - **Oversized functions**: Functions that do too much and should be split?
     - **Unnecessary abstractions**: Over-engineering for simple cases?
 
 2. **Duplication:**
+
     - **Repeated logic**: Same code pattern appearing multiple times?
     - **Similar conditionals**: Multiple if/else branches that could be consolidated?
     - **Copy-pasted code blocks**: Opportunities to extract to helper functions?
 
 3. **Comments:**
+
     - **Redundant comments**: Comments that restate what the code clearly shows?
     - **WHAT vs WHY**: Comments explaining what the code does instead of why?
     - **Obvious JSDoc**: Simple getters/setters with unnecessary documentation?
@@ -104,13 +108,15 @@ For each changed file in the diff, analyze for:
 ### Phase 2: Categorization
 
 Group issues by:
-- **Critical**: Must fix before commit (dead code, obvious bugs)
-- **Important**: Should fix (duplication, poor naming)
-- **Minor**: Nice to have (comment cleanup, minor refactors)
+
+-   **Critical**: Must fix before commit (dead code, obvious bugs)
+-   **Important**: Should fix (duplication, poor naming)
+-   **Minor**: Nice to have (comment cleanup, minor refactors)
 
 ### Phase 3: Planning
 
 Create an execution plan:
+
 1. **Quick wins first**: Obvious cleanup that's low risk
 2. **Batched refactors**: Group related changes
 3. **Verification points**: Points where we should run tests
@@ -118,6 +124,7 @@ Create an execution plan:
 ### Phase 4: Application
 
 For each planned change:
+
 1. Make the change
 2. Run `yarn nx format` to ensure consistent formatting
 3. Verify no regressions (type-check, lint, tests if affected)
@@ -132,14 +139,15 @@ For each planned change:
 ### Phase 6: Commit
 
 If changes were made:
+
 1. Stage all changes
 2. Create a commit with message: `chore: distil code quality improvements`
 3. Include a list of key changes in the commit body
 
 ## 4. Key Principles
 
-- **Preserve functionality**: No behavior changes unless fixing bugs
-- **Small incremental changes**: Easier to review and verify
-- **Test coverage**: Don't remove code that's covered by tests without understanding why
-- **Performance comments**: Keep comments explaining performance trade-offs
-- **Self-documenting code**: Good naming reduces need for comments
+-   **Preserve functionality**: No behavior changes unless fixing bugs
+-   **Small incremental changes**: Easier to review and verify
+-   **Test coverage**: Don't remove code that's covered by tests without understanding why
+-   **Performance comments**: Keep comments explaining performance trade-offs
+-   **Self-documenting code**: Good naming reduces need for comments

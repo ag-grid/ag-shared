@@ -20,9 +20,9 @@ Shows top ESLint violations by count with recommendations.
 
 **Examples:**
 
-- `/lint-fix unicorn/no-zero-fractions`
-- `/lint-fix unicorn/prefer-number-properties`
-- `/lint-fix unicorn/no-array-for-each`
+-   `/lint-fix unicorn/no-zero-fractions`
+-   `/lint-fix unicorn/prefer-number-properties`
+-   `/lint-fix unicorn/no-array-for-each`
 
 ---
 
@@ -43,6 +43,7 @@ Shows top ESLint violations by count with recommendations.
     ```
 
 3. **Generate a formatted report showing:**
+
     - Top 10-15 violations ranked by type (error > warning) then by count
     - Which rules are auto-fixable (✅) vs manual (❌)
     - Recommended next rule to fix (highest count auto-fixable)
@@ -56,7 +57,7 @@ Shows top ESLint violations by count with recommendations.
 
     | Rank | Rule                             | Count | Auto-Fix | Description                           |
     | ---- | -------------------------------- | ----- | -------- | ------------------------------------- |
-    | 1    | unicorn/prefer-number-properties | 170   | ✅       | Use Number.* APIs instead of globals |
+    | 1    | unicorn/prefer-number-properties | 170   | ✅       | Use Number.\* APIs instead of globals |
     | 2    | unicorn/no-array-for-each        | 166   | ✅       | Prefer for...of over .forEach()       |
     | 3    | no-negated-condition             | 37    | ❌       | Prefer positive conditions            |
 
@@ -70,10 +71,10 @@ Shows top ESLint violations by count with recommendations.
 
     **`unicorn/prefer-number-properties`** - 170 violations
 
-    - Auto-fixable: ✅ Yes
-    - Changes: `isNaN()` → `Number.isNaN()`, `parseInt()` → `Number.parseInt()`
-    - Impact: Better global scope hygiene
-    - Risk: Low - semantically equivalent
+    -   Auto-fixable: ✅ Yes
+    -   Changes: `isNaN()` → `Number.isNaN()`, `parseInt()` → `Number.parseInt()`
+    -   Impact: Better global scope hygiene
+    -   Risk: Low - semantically equivalent
 
     **To fix:** `/lint-fix unicorn/prefer-number-properties`
     ```
@@ -105,9 +106,9 @@ git status
 
 If there are uncommitted changes:
 
-- STOP and warn user
-- Suggest they stash or commit existing changes first
-- Only proceed if user explicitly confirms
+-   STOP and warn user
+-   Suggest they stash or commit existing changes first
+-   Only proceed if user explicitly confirms
 
 #### 2. Attempt Auto-Fix
 
@@ -155,6 +156,7 @@ For non-auto-fixable rules or remaining violations after auto-fix:
 2. **Group by file/pattern** for efficient fixing
 
 3. **Fix each file systematically:**
+
     - Open file
     - Apply fix pattern consistently
     - Move to next file
@@ -181,15 +183,15 @@ For non-auto-fixable rules or remaining violations after auto-fix:
 
 ### Common Auto-Fixable Rules Reference
 
-| Rule                               | Auto-Fix | Typical Change                                   |
-| ---------------------------------- | -------- | ------------------------------------------------ |
-| `unicorn/prefer-number-properties` | ✅       | `isNaN()` → `Number.isNaN()`                     |
-| `unicorn/no-array-for-each`        | ✅       | `.forEach()` → `for...of`                        |
-| `unicorn/no-zero-fractions`        | ✅       | `1.0` → `1`                                      |
-| `unicorn/prefer-string-slice`      | ✅       | `.substr()` → `.slice()`                         |
-| `@typescript-eslint/no-unused-vars`| ❌       | Remove or use variable                           |
-| `no-negated-condition`             | ❌       | Invert condition logic                           |
-| `sonarjs/cognitive-complexity`     | ❌       | Refactor complex function                        |
+| Rule                                | Auto-Fix | Typical Change               |
+| ----------------------------------- | -------- | ---------------------------- |
+| `unicorn/prefer-number-properties`  | ✅       | `isNaN()` → `Number.isNaN()` |
+| `unicorn/no-array-for-each`         | ✅       | `.forEach()` → `for...of`    |
+| `unicorn/no-zero-fractions`         | ✅       | `1.0` → `1`                  |
+| `unicorn/prefer-string-slice`       | ✅       | `.substr()` → `.slice()`     |
+| `@typescript-eslint/no-unused-vars` | ❌       | Remove or use variable       |
+| `no-negated-condition`              | ❌       | Invert condition logic       |
+| `sonarjs/cognitive-complexity`      | ❌       | Refactor complex function    |
 
 ---
 
