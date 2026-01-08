@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 /**
  * MCP Configuration Generator
  *
@@ -6,13 +7,12 @@
  * tool-specific formats for Claude, Cursor, Gemini, VS Code, and Codex.
  *
  * Usage:
- *   node mcp-config.js --tool <tool> --output <path> [--sources <paths>] [--project-prefix <prefix>] [--repo-root <path>]
+ *   node mcp-config.mjs --tool <tool> --output <path> [--sources <paths>] [--project-prefix <prefix>] [--repo-root <path>]
  *
  * Tools: claude, cursor, gemini, vscode, codex
  */
-
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
 
 // Parse command line arguments
 function parseArgs() {
@@ -89,7 +89,7 @@ const toolTransformers = {
             mcpServers: {},
         };
         for (const [name, server] of Object.entries(config.mcpServers)) {
-            const { type, ...rest } = server;
+            const { type: _type, ...rest } = server;
             result.mcpServers[name] = rest;
         }
         return result;
@@ -160,10 +160,7 @@ function mergeCodexConfig(existingPath, newToml, projectPrefix) {
 
     for (const line of lines) {
         // Check if entering a project MCP server section
-        if (
-            line.startsWith(`[mcp_servers."${projectPrefix}-`) ||
-            line.includes('MCP Servers (auto-generated)')
-        ) {
+        if (line.startsWith(`[mcp_servers."${projectPrefix}-`) || line.includes('MCP Servers (auto-generated)')) {
             inProjectSection = true;
             continue;
         }
@@ -191,7 +188,7 @@ function main() {
     const options = parseArgs();
 
     if (!options.tool || !options.output) {
-        console.error('Usage: mcp-config.js --tool <tool> --output <path> [--sources <paths>]');
+        console.error('Usage: mcp-config.mjs --tool <tool> --output <path> [--sources <paths>]');
         console.error('Tools: claude, cursor, gemini, vscode, codex');
         process.exit(1);
     }

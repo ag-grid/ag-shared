@@ -1,6 +1,6 @@
 #!/bin/bash
 # lib/mcp.sh - MCP configuration helpers
-# Uses Node.js script for JSON processing (mcp-config.js)
+# Uses Node.js script for JSON processing (mcp-config.mjs)
 
 # Get the directory where the setup-prompts scripts are located
 MCP_SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")/.."
@@ -45,7 +45,7 @@ setup_tool_mcp() {
     fi
 
     # Call Node.js script
-    node "$MCP_SCRIPT_DIR/mcp-config.js" \
+    node "$MCP_SCRIPT_DIR/mcp-config.mjs" \
         --tool "$tool" \
         --output "$target_file" \
         --sources "$sources" \
