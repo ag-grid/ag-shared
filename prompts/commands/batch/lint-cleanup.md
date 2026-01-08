@@ -60,11 +60,11 @@ Shows top ESLint violations by count with recommendations.
     ```markdown
     ## ESLint Violations Report
 
-    | Rank | Rule                             | Count | Auto-Fix | Description                           |
-    | ---- | -------------------------------- | ----- | -------- | ------------------------------------- |
-    | 1    | unicorn/prefer-number-properties | 170   | ✅       | Use Number.\* APIs instead of globals |
-    | 2    | unicorn/no-array-for-each        | 166   | ✅       | Prefer for...of over .forEach()       |
-    | 3    | no-negated-condition             | 37    | ❌       | Prefer positive conditions            |
+    | Rank | Rule                             | Count | Auto-Fix | Description                            |
+    | ---- | -------------------------------- | ----- | -------- | -------------------------------------- |
+    | 1    | unicorn/prefer-number-properties | 170   | ✅       | Use `Number.*` APIs instead of globals |
+    | 2    | unicorn/no-array-for-each        | 166   | ✅       | Prefer for...of over .forEach()        |
+    | 3    | no-negated-condition             | 37    | ❌       | Prefer positive conditions             |
 
     ...
     ```

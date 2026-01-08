@@ -73,7 +73,7 @@ Parse `${ARGUMENTS}` to extract:
     # Handle node_modules for worktrees
     REPO_ROOT=$(git rev-parse --show-toplevel)
     if [ ! -d "${REPO_ROOT}/node_modules/.bin" ]; then
-        MAIN_WORKTREE=$(git rev-parse --git-dir | sed 's|/\.git/worktrees/.*|/.git|' 2>/dev/null)
+        MAIN_WORKTREE=$(git rev-parse --git-dir | sed 's|/\\.git/worktrees/.*|/.git|' 2>/dev/null)
         if [ -n "$MAIN_WORKTREE" ] && [ -d "$MAIN_WORKTREE/../node_modules/.bin" ]; then
             export PATH="$(dirname "$MAIN_WORKTREE")/node_modules/.bin:$PATH"
         fi
@@ -119,7 +119,7 @@ Parse `${ARGUMENTS}` to extract:
     if echo "$GIT_DIR" | grep -q worktrees; then
         echo "Detected git worktree"
         # Extract main worktree path
-        MAIN_GIT_DIR=$(echo "$GIT_DIR" | sed 's|/\.git/worktrees/.*|/.git|')
+        MAIN_GIT_DIR=$(echo "$GIT_DIR" | sed 's|/\\.git/worktrees/.*|/.git|')
         if [ -d "$MAIN_GIT_DIR" ]; then
             MAIN_WORKTREE=$(cd "$MAIN_GIT_DIR/.." && pwd)
         fi
@@ -143,7 +143,7 @@ Parse `${ARGUMENTS}` to extract:
 
     # Handle node_modules location (for worktrees that share node_modules)
     if [ ! -d "node_modules/.bin" ] && [ -n "${MAIN_WORKTREE}" ] && [ -d "${MAIN_WORKTREE}/node_modules/.bin" ]; then
-        export PATH="${MAIN_WORKTREE}/node_modules/.bin:\$PATH"
+        export PATH="${MAIN_WORKTREE}/node_modules/.bin:$PATH"
     fi
 
     # Run the test command

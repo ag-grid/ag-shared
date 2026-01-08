@@ -141,12 +141,20 @@ qwencode:Qwen Code:detect_qwencode
 kiro:Kiro IDE:detect_kiro
 "
 
+# Tools excluded from auto-detection (modify AGENTS.md or have other side effects)
+# Use --targets=agentsmd explicitly if needed
+EXCLUDED_TOOLS="agentsmd"
+
 # Detect all installed tools
 detect_tools() {
     local detected=""
 
     while IFS=: read -r tool_id display_name detector; do
         [[ -z "$tool_id" ]] && continue
+        # Skip excluded tools
+        if [[ " $EXCLUDED_TOOLS " == *" $tool_id "* ]]; then
+            continue
+        fi
         if $detector 2>/dev/null; then
             if [[ -z "$detected" ]]; then
                 detected="$tool_id"
@@ -156,23 +164,20 @@ detect_tools() {
         fi
     done <<< "$TOOLS"
 
-    # Always include agentsmd for the open standard
-    if [[ -z "$detected" ]]; then
-        detected="agentsmd"
-    else
-        detected="agentsmd,$detected"
-    fi
-
     echo "$detected"
 }
 
-# Print detected tools
-print_detected_tools() {
+# Print detected tools (verbose mode)
+print_detected_tools_verbose() {
     echo -e "${BLUE}Detecting installed AI coding tools...${NC}"
     echo ""
 
     while IFS=: read -r tool_id display_name detector; do
         [[ -z "$tool_id" ]] && continue
+        # Skip excluded tools
+        if [[ " $EXCLUDED_TOOLS " == *" $tool_id "* ]]; then
+            continue
+        fi
         if $detector 2>/dev/null; then
             echo -e "  ${GREEN}✓${NC} $display_name ($tool_id)"
         else
@@ -181,27 +186,64 @@ print_detected_tools() {
     done <<< "$TOOLS"
 
     echo ""
-    echo -e "  ${GREEN}✓${NC} AGENTS.md (agentsmd) - always included"
-    echo ""
+}
+
+# Print detected tools (compact mode - default)
+print_detected_tools_compact() {
+    local detected_names=""
+
+    while IFS=: read -r tool_id display_name detector; do
+        [[ -z "$tool_id" ]] && continue
+        # Skip excluded tools
+        if [[ " $EXCLUDED_TOOLS " == *" $tool_id "* ]]; then
+            continue
+        fi
+        if $detector 2>/dev/null; then
+            if [[ -z "$detected_names" ]]; then
+                detected_names="$display_name"
+            else
+                detected_names="$detected_names, $display_name"
+            fi
+        fi
+    done <<< "$TOOLS"
+
+    if [[ -n "$detected_names" ]]; then
+        echo -e "${GREEN}✓${NC} Detected: $detected_names"
+    fi
 }
 
 # Generate rulesync configuration
 generate_config() {
     local targets="$1"
+    local verbose="$2"
 
     cd "$REPO_ROOT"
 
-    echo -e "${BLUE}Generating configurations for: ${NC}$targets"
-    echo ""
+    if [[ "$verbose" == "true" ]]; then
+        echo -e "${BLUE}Generating configurations for: ${NC}$targets"
+        echo ""
 
-    # Run rulesync with detected targets
-    npx rulesync generate \
-        --targets="$targets" \
-        --features="rules,ignore,mcp,commands,subagents" \
-        --delete
+        # Run rulesync with detected targets (verbose)
+        npx rulesync generate \
+            --targets="$targets" \
+            --features="rules,ignore,mcp,commands,subagents" \
+            --delete
 
-    echo ""
-    echo -e "${GREEN}✓ Configuration generated successfully${NC}"
+        echo ""
+        echo -e "${GREEN}✓ Configuration generated successfully${NC}"
+    else
+        # Run rulesync quietly and capture output for summary
+        local output
+        output=$(npx rulesync generate \
+            --targets="$targets" \
+            --features="rules,ignore,mcp,commands,subagents" \
+            --delete 2>&1)
+
+        # Extract the summary line from rulesync output
+        local summary
+        summary=$(echo "$output" | grep -o '🎉.*' || echo "Configuration generated")
+        echo -e "${GREEN}✓${NC} $summary"
+    fi
 }
 
 # Show help
@@ -215,6 +257,7 @@ show_help() {
     echo "  --all       Generate for all supported tools"
     echo "  --list      List detected tools without generating"
     echo "  --targets   Comma-separated list of specific targets"
+    echo "  --verbose   Show detailed output"
     echo "  --help      Show this help message"
     echo ""
     echo "Supported tools:"
@@ -222,7 +265,6 @@ show_help() {
         [[ -z "$tool_id" ]] && continue
         echo "  - $display_name ($tool_id)"
     done <<< "$TOOLS"
-    echo "  - AGENTS.md (agentsmd)"
     echo ""
     echo "Examples:"
     echo "  ./setup-prompts.sh                    # Auto-detect and generate"
@@ -235,6 +277,7 @@ show_help() {
 main() {
     local mode="auto"
     local custom_targets=""
+    local verbose="false"
 
     # Parse arguments
     while [[ $# -gt 0 ]]; do
@@ -252,6 +295,10 @@ main() {
                 custom_targets="${1#*=}"
                 shift
                 ;;
+            --verbose|-v)
+                verbose="true"
+                shift
+                ;;
             --help|-h)
                 show_help
                 exit 0
@@ -266,26 +313,33 @@ main() {
 
     case $mode in
         list)
-            print_detected_tools
+            print_detected_tools_verbose
             ;;
         all)
-            echo -e "${BLUE}Generating for all supported tools...${NC}"
-            generate_config "*"
+            if [[ "$verbose" == "true" ]]; then
+                echo -e "${BLUE}Generating for all supported tools...${NC}"
+            fi
+            generate_config "*" "$verbose"
             ;;
         custom)
-            generate_config "$custom_targets"
+            generate_config "$custom_targets" "$verbose"
             ;;
         auto)
-            print_detected_tools
-
             local detected
             detected=$(detect_tools)
 
-            if [[ -z "$detected" || "$detected" == "agentsmd" ]]; then
-                echo -e "${YELLOW}No tools detected beyond AGENTS.md. Use --all to generate for all tools.${NC}"
+            if [[ -z "$detected" ]]; then
+                echo -e "${YELLOW}No AI coding tools detected. Use --all to generate for all tools.${NC}"
+                exit 0
             fi
 
-            generate_config "$detected"
+            if [[ "$verbose" == "true" ]]; then
+                print_detected_tools_verbose
+            else
+                print_detected_tools_compact
+            fi
+
+            generate_config "$detected" "$verbose"
             ;;
     esac
 }

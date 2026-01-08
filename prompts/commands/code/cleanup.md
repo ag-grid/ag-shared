@@ -46,7 +46,7 @@ If the user provides a command option of `help`:
         base_branch="latest"
     else
         # Check for release branches (bX.Y.Z pattern)
-        release_branches=$(git branch -r | grep -E 'origin/b[0-9]+\.[0-9]+\.[0-9]+$' | sed 's/.*origin\///' | sort -V | tail -1)
+        release_branches=$(git branch -r | grep -E 'origin/b[0-9]+\\.[0-9]+\\.[0-9]+$' | sed 's/.*origin\\///' | sort -V | tail -1)
         if [ -n "$release_branches" ]; then
             base_branch="$release_branches"
         else
