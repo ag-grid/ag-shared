@@ -1,43 +1,75 @@
 #!/bin/bash
-# external/ag-shared/scripts/setup-prompts/setup-prompts.sh - Smart prompts setup for AG Grid products
+# external/ag-shared/scripts/setup-prompts/setup-prompts.sh
+# Smart prompts setup for AG Grid products
 #
-# This script handles detection and user prompts before delegating to the
-# actual setup script in the prompts repository.
+# This script handles:
+# 1. Cloning/updating the external prompts repo if available
+# 2. Setting up worktree symlinks
+# 3. Configuring agentic tools (Claude, Cursor, Gemini, Codex, VS Code)
 #
-# Configuration via environment variables:
-#   AG_PROMPTS_REPO - Git URL for prompts repository (default: git@github.com:ag-grid/ag-charts-prompts.git)
-#   AG_PROMPTS_DIR_NAME - Directory name for prompts checkout (default: ag-charts-prompts)
+# Configuration via environment variables (defaults derived from git remote origin):
+#   AG_PROMPTS_REPO - Git URL for prompts repository (default: git@github.com:ag-grid/{project}-prompts.git)
+#   AG_PROMPTS_DIR_NAME - Directory name for prompts checkout (default: {project}-prompts)
+#   AG_PROJECT_NAME - Project name for display (default: title case of project, e.g. "AG Grid")
+#   AG_PROJECT_PREFIX - Project prefix for Codex MCP servers (default: {project})
 
 set -euo pipefail
 
-# Configuration - can be overridden by consuming repo
-PROMPTS_REPO="${AG_PROMPTS_REPO:-git@github.com:ag-grid/ag-charts-prompts.git}"
-PROMPTS_DIR_NAME="${AG_PROMPTS_DIR_NAME:-ag-charts-prompts}"
+# Get the directory where this script is located
+SCRIPT_DIR="$(readlink -f "$(dirname "$0")")"
 
-# Detect if we're in a git worktree and find the main repo
-# In a worktree, .git is a file containing "gitdir: /path/to/main/.git/worktrees/name"
-get_main_repo_root() {
-    local git_path=".git"
+# Source library files
+source "$SCRIPT_DIR/lib/utils.sh"
+source "$SCRIPT_DIR/lib/git.sh"
+source "$SCRIPT_DIR/lib/prompts.sh"
+source "$SCRIPT_DIR/lib/mcp.sh"
+source "$SCRIPT_DIR/lib/tools/claude.sh"
+source "$SCRIPT_DIR/lib/tools/cursor.sh"
+source "$SCRIPT_DIR/lib/tools/gemini.sh"
+source "$SCRIPT_DIR/lib/tools/codex.sh"
+source "$SCRIPT_DIR/lib/tools/vscode.sh"
 
-    if [[ -f "$git_path" ]]; then
-        # We're in a worktree - parse the gitdir to find main repo
-        local gitdir
-        gitdir=$(cat "$git_path" | sed 's/gitdir: //')
-        # gitdir is like /path/to/main/.git/worktrees/name
-        # Go up twice to get /path/to/main/.git, then dirname for main repo
-        local main_git_dir
-        main_git_dir=$(dirname "$(dirname "$gitdir")")
-        dirname "$main_git_dir"
-    else
-        # Normal checkout - current directory is the repo root
-        pwd
+# Detect project name from git remote origin
+# Extracts repo name from URLs like:
+#   git@github.com:ag-grid/ag-charts.git -> ag-charts
+#   https://github.com/ag-grid/ag-grid.git -> ag-grid
+detect_project_name() {
+    local remote_url
+    remote_url=$(git remote get-url origin 2>/dev/null || echo "")
+
+    if [[ -z "$remote_url" ]]; then
+        echo "ag-grid"  # fallback
+        return
     fi
+
+    # Extract repo name from URL (handles both SSH and HTTPS)
+    local repo_name
+    repo_name=$(echo "$remote_url" | sed -E 's|.*[:/]([^/]+)\.git$|\1|; s|.*[:/]([^/]+)$|\1|')
+
+    echo "$repo_name"
 }
 
-# Detect if we're in a worktree
-is_worktree() {
-    [[ -f ".git" ]]
+# Get detected project name
+DETECTED_PROJECT=$(detect_project_name)
+
+# Configuration - defaults derived from git remote, can be overridden
+PROMPTS_REPO="${AG_PROMPTS_REPO:-git@github.com:ag-grid/${DETECTED_PROJECT}-prompts.git}"
+PROMPTS_DIR_NAME="${AG_PROMPTS_DIR_NAME:-${DETECTED_PROJECT}-prompts}"
+PROJECT_PREFIX="${AG_PROJECT_PREFIX:-${DETECTED_PROJECT}}"
+
+# Convert project prefix to title case for display name (ag-grid -> AG Grid)
+default_project_name() {
+    echo "$PROJECT_PREFIX" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper($i)}1'
 }
+PROJECT_NAME="${AG_PROJECT_NAME:-$(default_project_name)}"
+
+# Target repo is current working directory
+REPO_ROOT="$(pwd)"
+
+# Prompt source paths
+AG_SHARED_PROMPTS="$REPO_ROOT/external/ag-shared/prompts"
+TOOLS_PROMPTS="$REPO_ROOT/tools/prompts"
+PROMPTS_SYMLINK="$REPO_ROOT/external/prompts"
 
 # Get the main repo root (handles worktrees)
 MAIN_REPO_ROOT=$(get_main_repo_root)
@@ -45,79 +77,20 @@ MAIN_REPO_ROOT=$(get_main_repo_root)
 # Prompts directory is always adjacent to the MAIN repo, not the worktree
 PROMPTS_DIR="$MAIN_REPO_ROOT/../$PROMPTS_DIR_NAME"
 
-# Symlink location in external/
-PROMPTS_SYMLINK="external/prompts"
+# Parse command line options
+UPDATE_MCP_CONFIG=false
+while getopts "u" opt; do
+    case $opt in
+        u)
+            UPDATE_MCP_CONFIG=true
+            ;;
+        \?)
+            echo "Invalid option: -$OPTARG" >&2
+            exit 1
+            ;;
+    esac
+done
 
-# Detect CI environment
-is_ci() {
-    [[ -n "${CI:-}" || -n "${GITHUB_ACTIONS:-}" || -n "${JENKINS_URL:-}" || -n "${BUILDKITE:-}" || -n "${CIRCLECI:-}" || -n "${TRAVIS:-}" ]]
-}
-
-# Detect if running in interactive terminal
-is_interactive() {
-    [[ -t 0 ]]
-}
-
-# Detect if user has agentic tools installed
-has_agentic_tools() {
-    command -v claude >/dev/null 2>&1 || \
-    command -v cursor >/dev/null 2>&1 || \
-    command -v gemini >/dev/null 2>&1 || \
-    command -v codex >/dev/null 2>&1
-}
-
-# Check if user has access to the prompts repo
-has_repo_access() {
-    git ls-remote "$PROMPTS_REPO" HEAD >/dev/null 2>&1
-}
-
-# Check if prompts checkout is clean (no uncommitted changes)
-is_checkout_clean() {
-    (cd "$PROMPTS_DIR" && [[ -z "$(git status --porcelain)" ]])
-}
-
-# Check if prompts checkout is behind remote
-is_checkout_behind() {
-    (
-        cd "$PROMPTS_DIR"
-        git fetch origin --quiet 2>/dev/null || return 1
-        local LOCAL=$(git rev-parse HEAD)
-        local REMOTE=$(git rev-parse origin/latest 2>/dev/null || git rev-parse origin/main 2>/dev/null || echo "")
-        [[ -n "$REMOTE" && "$LOCAL" != "$REMOTE" ]]
-    )
-}
-
-# Prompt user with default yes, or auto-yes in non-interactive mode
-prompt_yes_no() {
-    local message="$1"
-    if ! is_interactive; then
-        # Non-interactive: auto-yes
-        return 0
-    fi
-    read -p "$message [Y/n] " -n 1 -r
-    echo
-    [[ ! $REPLY =~ ^[Nn]$ ]]
-}
-
-# Verify external/prompts symlink resolves correctly (symlink is version-controlled)
-verify_symlink() {
-    if [[ ! -L "$PROMPTS_SYMLINK" ]]; then
-        echo "Warning: $PROMPTS_SYMLINK is not a symlink"
-        return 1
-    fi
-
-    if [[ ! -d "$PROMPTS_SYMLINK" ]]; then
-        echo "Warning: $PROMPTS_SYMLINK does not resolve to a directory"
-        echo "  Symlink target: $(readlink "$PROMPTS_SYMLINK")"
-        echo "  Expected: $PROMPTS_DIR_NAME checkout at $PROMPTS_DIR"
-        return 1
-    fi
-
-    echo "✓ $PROMPTS_SYMLINK resolves correctly"
-    return 0
-}
-
-# Main logic
 main() {
     # Skip in CI
     if is_ci; then
@@ -125,84 +98,51 @@ main() {
         return 0
     fi
 
-    # If prompts dir exists, check for updates and run setup
-    # (bypass agentic tools check - user explicitly cloned the repo)
-    if [[ -d "$PROMPTS_DIR" ]]; then
-        if is_checkout_clean && is_checkout_behind; then
-            echo "$PROMPTS_DIR_NAME is out of date."
-            if prompt_yes_no "Update now?"; then
-                echo "Updating $PROMPTS_DIR_NAME..."
-                (cd "$PROMPTS_DIR" && git pull --ff-only)
-            fi
-        fi
+    # Check and configure git symlinks
+    check_symlinks_config
 
-        # Verify external/prompts symlink resolves (symlink is version-controlled)
-        verify_symlink
+    # Handle external prompts repo (clone/update/symlink)
+    handle_external_prompts_repo
 
-        # In worktrees, create a symlink in the parent directory pointing to the real prompts
-        # This allows the version-controlled relative symlink to work
-        if is_worktree; then
-            local worktree_parent
-            worktree_parent=$(dirname "$(pwd)")
-            local parent_prompts_link="$worktree_parent/$PROMPTS_DIR_NAME"
-            local real_prompts
-            real_prompts=$(cd "$PROMPTS_DIR" && pwd)
-
-            if [[ ! -e "$parent_prompts_link" ]]; then
-                echo "Creating prompts symlink in worktree parent: $parent_prompts_link -> $real_prompts"
-                ln -sf "$real_prompts" "$parent_prompts_link"
-            elif [[ -L "$parent_prompts_link" ]]; then
-                local current_target
-                current_target=$(readlink "$parent_prompts_link")
-                if [[ "$current_target" != "$real_prompts" ]]; then
-                    echo "Updating prompts symlink in worktree parent: $parent_prompts_link -> $real_prompts"
-                    ln -sf "$real_prompts" "$parent_prompts_link"
-                fi
-            fi
-        fi
-
-        # Run the actual setup script from the prompts repo
-        "$PROMPTS_DIR/setup-prompts.sh"
-        return 0
-    fi
-
-    # Prompts dir doesn't exist - only offer to clone if agentic tools detected
-    if ! has_agentic_tools; then
+    # Skip tool setup if no agentic tools detected
+    if ! has_agentic_tools && ! is_vscode; then
         echo "Skipping prompts setup (no agentic tools detected)"
         return 0
     fi
 
-    # Check repo access before offering to clone
-    if ! has_repo_access; then
-        echo "Skipping prompts setup (no access to $PROMPTS_DIR_NAME repo)"
-        return 0
+    # Update MCP config if -u flag was passed
+    if [[ "$UPDATE_MCP_CONFIG" == true ]]; then
+        configure_mcp
     fi
 
-    echo "$PROMPTS_DIR_NAME not found at $PROMPTS_DIR"
-    if prompt_yes_no "Clone it now?"; then
-        echo "Cloning $PROMPTS_DIR_NAME..."
-        git clone "$PROMPTS_REPO" "$PROMPTS_DIR"
-
-        # Verify external/prompts symlink resolves (symlink is version-controlled)
-        verify_symlink
-
-        # In worktrees, create parent symlink (same logic as above)
-        if is_worktree; then
-            local worktree_parent
-            worktree_parent=$(dirname "$(pwd)")
-            local parent_prompts_link="$worktree_parent/$PROMPTS_DIR_NAME"
-            local real_prompts
-            real_prompts=$(cd "$PROMPTS_DIR" && pwd)
-            if [[ ! -e "$parent_prompts_link" ]]; then
-                echo "Creating prompts symlink in worktree parent: $parent_prompts_link -> $real_prompts"
-                ln -sf "$real_prompts" "$parent_prompts_link"
-            fi
-        fi
-
-        "$PROMPTS_DIR/setup-prompts.sh"
-    else
-        echo "Skipping prompts setup"
+    # Tool-specific setups
+    if command -v claude >/dev/null 2>&1; then
+        setup_claude
     fi
+
+    if command -v gemini >/dev/null 2>&1; then
+        setup_gemini
+    fi
+
+    if command -v cursor >/dev/null 2>&1; then
+        setup_cursor
+    fi
+
+    if command -v codex >/dev/null 2>&1; then
+        setup_codex
+    fi
+
+    if is_vscode; then
+        setup_vscode
+    fi
+
+    # Enable direnv if installed, .envrc exists, and user has the AG project directory
+    if command -v direnv >/dev/null 2>&1 && [[ -f "$REPO_ROOT/.envrc" ]] && [[ -d "$HOME/.claude-${PROJECT_PREFIX}/" ]]; then
+        direnv allow
+    fi
+
+    echo ""
+    echo "✓ Prompts setup complete"
 }
 
 main "$@"
