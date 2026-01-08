@@ -1,28 +1,10 @@
 {
-  "mcpServers": {
-    "sequential-thinking": {
-      "type": "stdio",
-      "command": "yarn",
-      "args": [
-        "run",
-        "--silent",
-        "mcp-server-sequential-thinking"
-      ],
-      "env": {}
-    },
-    "puppeteer": {
-      "type": "stdio",
-      "command": "yarn",
-      "args": [
-        "run",
-        "--silent",
-        "mcp-server-puppeteer"
-      ],
-      "env": {}
-    },
-    "atlassian": {
-      "type": "sse",
-      "url": "https://mcp.atlassian.com/v1/sse"
+    "mcpServers": {
+        "sequential-thinking": {
+            "type": "stdio",
+            "command": "yarn",
+            "args": ["run", "--silent", "mcp-server-sequential-thinking"],
+            "env": {}
+        }
     }
-  }
 }

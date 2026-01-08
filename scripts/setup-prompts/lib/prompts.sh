@@ -82,12 +82,21 @@ setup_commands() {
         while IFS= read -r file; do
             [[ -z "$file" ]] && continue
 
+            # Calculate per-file relative path accounting for subdirectory depth
+            local file_depth
+            file_depth=$(dirname "$file" | tr -cd '/' | wc -c)
+            [[ "$(dirname "$file")" != "." ]] && file_depth=$((file_depth + 1))
+            local file_prefix=""
+            for ((j=0; j<file_depth; j++)); do
+                file_prefix="../$file_prefix"
+            done
+
             if [[ "$format" == "md" && "$mode" == "link" ]]; then
                 if [[ -f "$target_dir/$file" || -L "$target_dir/$file" ]]; then
                     rm -f "$target_dir/$file"
                 fi
                 mkdir -p "$(dirname "$target_dir/$file")"
-                ln -sf "$relative_source/$file" "$target_dir/$file"
+                ln -sf "${file_prefix}${relative_source}/$file" "$target_dir/$file"
             elif [[ "$format" == "md" && "$mode" == "copy" ]]; then
                 if [[ -f "$target_dir/$file" ]]; then
                     rm -f "$target_dir/$file"
@@ -98,7 +107,7 @@ setup_commands() {
                 mkdir -p "$(dirname "$target_dir/${file%.md}.toml")"
                 cat > "$target_dir/${file%.md}.toml" <<EOF
 prompt = """
-@${relative_source}/${file}
+@${file_prefix}${relative_source}/${file}
 """
 EOF
             fi

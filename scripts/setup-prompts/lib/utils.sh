@@ -2,16 +2,17 @@
 # lib/utils.sh - Utility functions for setup-prompts
 
 # Calculate relative path from a file location back to repo root
-# Usage: path_to_root ".claude/commands/foo.md" -> "./../.."
+# Usage: path_to_root ".claude/agents" -> "../../"
 path_to_root() {
-    local target_file=$1
+    local target_path=$1
 
-    # Count directory levels in target_file path
-    local dir_count
-    dir_count=$(echo "$target_file" | tr -cd '/' | wc -c)
+    # Count directory components (slashes + 1 for paths like ".claude/agents")
+    local slash_count
+    slash_count=$(echo "$target_path" | tr -cd '/' | wc -c)
+    local dir_count=$((slash_count + 1))
 
     # Build relative path with appropriate number of ../ prefixes
-    local relative_path="./"
+    local relative_path=""
     for ((i=0; i<dir_count; i++)); do
         relative_path="$relative_path../"
     done
