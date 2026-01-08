@@ -79,9 +79,15 @@ const toolTransformers = {
     claude: (config) => config,
     cursor: (config) => config,
 
-    // Gemini doesn't support the 'type' field
+    // Gemini doesn't support the 'type' field, and needs context config
     gemini: (config) => {
-        const result = { mcpServers: {} };
+        const result = {
+            // Tell Gemini to read AGENTS.md for project context
+            context: {
+                fileName: ['AGENTS.md'],
+            },
+            mcpServers: {},
+        };
         for (const [name, server] of Object.entries(config.mcpServers)) {
             const { type, ...rest } = server;
             result.mcpServers[name] = rest;
