@@ -4,8 +4,9 @@
 # Setup Cursor worktrees configuration
 setup_cursor_worktrees() {
     local target_file="$REPO_ROOT/$1"
+    # Use dirname since path_to_root expects directory paths, not file paths
     local relative_path
-    relative_path=$(path_to_root "$1")
+    relative_path=$(path_to_root "$(dirname "$1")")
 
     # Only create if worktrees config exists in prompts
     if [[ -f "$PROMPTS_SYMLINK/.cursor-worktrees.json" ]]; then
