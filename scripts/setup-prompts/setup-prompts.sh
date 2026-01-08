@@ -212,6 +212,22 @@ print_detected_tools_compact() {
     fi
 }
 
+# Copy additional config files not handled by rulesync
+copy_extra_configs() {
+    local verbose="$1"
+
+    # Copy Cursor worktrees config if source exists and cursor is a target
+    local worktrees_src="$SCRIPT_DIR/../../prompts/.cursor-worktrees.json"
+    local worktrees_dest="$REPO_ROOT/.cursor/worktrees.json"
+
+    if [[ -f "$worktrees_src" ]] && [[ -d "$REPO_ROOT/.cursor" ]]; then
+        cp "$worktrees_src" "$worktrees_dest"
+        if [[ "$verbose" == "true" ]]; then
+            echo -e "${GREEN}✓${NC} Copied Cursor worktrees config"
+        fi
+    fi
+}
+
 # Generate rulesync configuration
 generate_config() {
     local targets="$1"
@@ -229,6 +245,9 @@ generate_config() {
             --features="rules,ignore,mcp,commands,subagents" \
             --delete
 
+        # Copy extra configs
+        copy_extra_configs "$verbose"
+
         echo ""
         echo -e "${GREEN}✓ Configuration generated successfully${NC}"
     else
@@ -238,6 +257,9 @@ generate_config() {
             --targets="$targets" \
             --features="rules,ignore,mcp,commands,subagents" \
             --delete 2>&1)
+
+        # Copy extra configs
+        copy_extra_configs "$verbose"
 
         # Extract the summary line from rulesync output
         local summary
