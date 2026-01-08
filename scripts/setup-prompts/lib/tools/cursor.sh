@@ -77,7 +77,7 @@ setup_cursor() {
     setup_commands .cursor/commands md link
 
     # Setup MCP configuration
-    setup_mcp .cursor/mcp.json
+    setup_cursor_mcp .cursor/mcp.json
 
     # Setup worktrees configuration
     setup_cursor_worktrees .cursor/worktrees.json
