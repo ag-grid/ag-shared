@@ -1,3 +1,8 @@
+---
+targets: ['*']
+description: 'Fix build and lint errors by running commands, grouping issues, and orchestrating fixes'
+---
+
 # Fixup build and lint errors
 
 Focusing on ${ARGUMENTS}, follow these steps:

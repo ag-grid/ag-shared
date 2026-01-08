@@ -1,3 +1,8 @@
+---
+targets: ['*']
+description: 'Find the commit that introduced test failures using git bisect'
+---
+
 # Git Bisect - Find the Commit That Introduced Test Failures
 
 You are an expert software engineer helping to identify the commit that introduced test failures or flakiness using git bisect.

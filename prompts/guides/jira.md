@@ -1,3 +1,8 @@
+---
+targets: ['*']
+description: 'Guidelines for searching and creating JIRA tickets in AG products'
+---
+
 # JIRA Guide
 
 This guide covers working with JIRA tickets in AG products.

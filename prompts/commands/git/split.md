@@ -1,3 +1,8 @@
+---
+targets: ['*']
+description: 'Split large files into smaller modules while preserving git history (blame, log)'
+---
+
 # Split Large Files with Git History Preservation
 
 You are an expert in Git history management and code refactoring. Your goal is to split large files into smaller, focused modules while preserving the complete git history (blame, log) for the extracted code.

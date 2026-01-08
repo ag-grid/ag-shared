@@ -1,5 +1,7 @@
 ---
-paths: 'packages/*/src/**/*.ts'
+targets: ['*']
+description: 'Code quality practices including avoiding bloat, comment guidelines, and review practices'
+globs: ['packages/*/src/**/*.ts']
 ---
 
 # Code Quality Guide

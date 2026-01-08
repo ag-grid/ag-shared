@@ -1,3 +1,8 @@
+---
+targets: ['*']
+description: 'Analyze ESLint violations and auto-fix specific rules in isolation'
+---
+
 # ESLint Auto-Fix Tool
 
 Analyze ESLint violations or fix a specific rule in isolation.
