@@ -47,7 +47,10 @@
         ],
         "deny": []
     },
-    "includeCoAuthoredBy": false,
+    "attribution": {
+        "commit": "",
+        "pr": ""
+    },
     "hooks": {
         "PostToolUse": [
             {
