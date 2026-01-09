@@ -212,18 +212,31 @@ print_detected_tools_compact() {
     fi
 }
 
-# Copy additional config files not handled by rulesync
+# Symlink additional config files not handled by rulesync
 copy_extra_configs() {
     local verbose="$1"
+    local targets="$2"
 
-    # Copy Cursor worktrees config if source exists and cursor is a target
-    local worktrees_src="$SCRIPT_DIR/../../prompts/.cursor-worktrees.json"
+    # Symlink Cursor worktrees config if source exists and cursor is a target
+    local worktrees_src="external/ag-shared/prompts/.cursor-worktrees.json"
     local worktrees_dest="$REPO_ROOT/.cursor/worktrees.json"
 
-    if [[ -f "$worktrees_src" ]] && [[ -d "$REPO_ROOT/.cursor" ]]; then
-        cp "$worktrees_src" "$worktrees_dest"
+    if [[ -f "$REPO_ROOT/$worktrees_src" ]] && [[ -d "$REPO_ROOT/.cursor" ]]; then
+        ln -sf "../$worktrees_src" "$worktrees_dest"
         if [[ "$verbose" == "true" ]]; then
-            echo -e "${GREEN}✓${NC} Copied Cursor worktrees config"
+            echo -e "${GREEN}✓${NC} Symlinked Cursor worktrees config"
+        fi
+    fi
+
+    # Symlink Claude Code settings if source exists and claudecode is a target
+    local claude_settings_src="external/ag-shared/prompts/.claude-settings.json"
+    local claude_settings_dest="$REPO_ROOT/.claude/settings.json"
+
+    if [[ -f "$REPO_ROOT/$claude_settings_src" ]] && [[ "$targets" == *"claudecode"* || "$targets" == "*" ]]; then
+        mkdir -p "$REPO_ROOT/.claude"
+        ln -sf "../$claude_settings_src" "$claude_settings_dest"
+        if [[ "$verbose" == "true" ]]; then
+            echo -e "${GREEN}✓${NC} Symlinked Claude Code settings"
         fi
     fi
 }
@@ -246,7 +259,7 @@ generate_config() {
             --delete
 
         # Copy extra configs
-        copy_extra_configs "$verbose"
+        copy_extra_configs "$verbose" "$targets"
 
         echo ""
         echo -e "${GREEN}✓ Configuration generated successfully${NC}"
@@ -259,7 +272,7 @@ generate_config() {
             --delete 2>&1)
 
         # Copy extra configs
-        copy_extra_configs "$verbose"
+        copy_extra_configs "$verbose" "$targets"
 
         # Extract the summary line from rulesync output
         local summary
