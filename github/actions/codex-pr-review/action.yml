@@ -401,7 +401,7 @@ runs:
                             path: finding.file,
                             line: finding.end_line || finding.line,
                             side: 'RIGHT',
-                            body: `${priorityEmoji} **[${finding.priority}] ${finding.title}**\n\n${finding.description}`
+                            body: `${priorityEmoji} **[${finding.priority}] ${finding.title}**\n\n${finding.description}\n\n${commentMarker}`
                           };
 
                           // For multi-line comments, add start_line and start_side
@@ -492,7 +492,7 @@ runs:
                         per_page: 100
                       }
                     );
-                    const botComments = allReviewComments.filter(c => c.user.login === 'github-actions[bot]');
+                    const botComments = allReviewComments.filter(c => c.user.login === 'github-actions[bot]' && c.body.includes(commentMarker));
                     const nonBotComments = allReviewComments.filter(c => c.user.login !== 'github-actions[bot]');
 
                     // Build set of bot comment IDs that have user replies
