@@ -25,8 +25,9 @@ description: Run a Codex PR review with complete log suppression - no LLM output
 # | Auth not configured (skipped)        | No  | None     | No                    | No                 |
 # | Codex exits non-zero                 | Yes then removed | None | No             | No                 |
 # | Codex exits 0, empty output          | Yes then removed | None | No             | No                 |
-# | Codex exits 0, no findings           | Yes then removed | 👍   | Yes (created/updated) | No                 |
-# | Codex exits 0, 1+ findings           | Yes then removed | 👎   | Yes (created/updated) | Yes (if JSON mode) |
+# | Codex exits 0 (markdown mode)        | Yes then removed | None | Yes (created/updated) | No                 |
+# | Codex exits 0, no findings (JSON)    | Yes then removed | 👍   | Yes (created/updated) | No                 |
+# | Codex exits 0, 1+ findings (JSON)    | Yes then removed | 👎   | Yes (created/updated) | Yes                |
 #
 inputs:
     openai-api-key:
@@ -118,6 +119,10 @@ runs:
                   core.setOutput('reaction_id', reaction.id);
 
         - name: Clean Up Old Completion Reactions
+          # Removes prior +1/-1 reactions from github-actions[bot] on this PR.
+          # Note: github-actions[bot] is a shared identity for all GITHUB_TOKEN-based actions,
+          # so this could theoretically remove reactions from other workflows. Accepted trade-off:
+          # GitHub limits each user to one reaction per type per issue, so blast radius is minimal.
           if: steps.check-auth.outputs.skipped != 'true'
           uses: actions/github-script@v7
           continue-on-error: true
@@ -649,7 +654,7 @@ runs:
                   });
 
         - name: React Success
-          if: steps.check-auth.outputs.skipped != 'true' && steps.verify.outputs.success == 'true' && steps.post-comment.outputs.has_findings != 'true'
+          if: steps.check-auth.outputs.skipped != 'true' && steps.verify.outputs.success == 'true' && steps.post-comment.outputs.has_findings == 'false'
           uses: actions/github-script@v7
           continue-on-error: true
           env:
