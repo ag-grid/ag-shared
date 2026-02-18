@@ -217,9 +217,8 @@ This phase is essential. Each PR must be polished until reviewer-ready, not just
    - Would the PR title make sense in a changelog?
 
 5. **Run Build Validation**
-   - Type checking: `yarn nx build:types <affected-package>`
-   - Linting: `yarn nx lint <affected-package>`
-   - Tests: `yarn nx test <affected-package>`
+   - Run the project's pre-commit validation commands against each affected package
+   - Ensure type checking, linting, and tests all pass before proceeding
 
 6. **Fix Issues**
    - Code quality issues: fix and amend or add fixup commits
