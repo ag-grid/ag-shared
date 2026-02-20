@@ -29,7 +29,7 @@ Check for any of these indicators:
 
 **If found**: **STRICT MODE** - All MCP tools REQUIRED. If ANY tool is missing, STOP immediately with error message: `ERROR: Cannot proceed in orchestrated mode - missing required MCP tool [name]`. Do NOT attempt review or fallbacks.
 
-**If not found**: **ADAPTIVE MODE** - Check available tools. If claude-in-chrome or Task tool unavailable, display degraded mode warning and request explicit user confirmation before proceeding.
+**If not found**: **ADAPTIVE MODE** - Actively check whether claude-in-chrome and Task tools are available in the current session. Only display the degraded mode warning if tools are genuinely missing. If chrome browser tools ARE available, use them for full visual and interaction testing — do not default to static-only analysis merely because there is no orchestrator.
 
 ### Degraded Mode Warning Template
 
