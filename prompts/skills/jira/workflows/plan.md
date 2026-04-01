@@ -20,7 +20,8 @@ Use this workflow when the user is **planning** JIRA ticket creation — i.e., d
 Read the appropriate template file (from the `templates/` subdirectory):
 
 - **Bug / Improvement task**: `templates/bug.md`
-- **Feature / Tech-debt / Docs**: `templates/feature-task.md`
+- **Feature / Tech-debt / Docs (Grid)**: `templates/feature-task-grid.md`
+- **Feature / Tech-debt / Docs (Charts/Studio)**: `templates/feature-task-charts.md`
 
 ## Step 2: Output the Plan
 

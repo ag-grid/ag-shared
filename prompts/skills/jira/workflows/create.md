@@ -25,7 +25,8 @@ Use this when the user specifically asks for an improvement task or when behavio
 Based on ticket type, read the relevant template (in the `templates/` subdirectory of this skill):
 
 - **Bug tickets and Improvement tasks**: Read `templates/bug.md`.
-- **Feature/Tech-debt/Docs**: Read `templates/feature-task.md`.
+- **Feature/Tech-debt/Docs (Grid)**: Read `templates/feature-task-grid.md`.
+- **Feature/Tech-debt/Docs (Charts/Studio)**: Read `templates/feature-task-charts.md`.
 
 ## Step 2: Gather Information
 

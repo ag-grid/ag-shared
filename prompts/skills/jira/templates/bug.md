@@ -1,4 +1,4 @@
-[Charts] Brief bug title
+[Product] Brief bug title
 
 **TC1 - First test case label**
 

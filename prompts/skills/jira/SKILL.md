@@ -109,8 +109,11 @@ Each ticket has exactly **one** track value. Never set multiple track values on 
 
 ### Templates
 
-- **Feature/Task**: `templates/feature-task.md` (12-section numbered format)
+- **Feature/Task (Grid)**: `templates/feature-task-grid.md` (12-section numbered format)
+- **Feature/Task (Charts/Studio)**: `templates/feature-task-charts.md` (12-section numbered format)
 - **Bug**: `templates/bug.md` (TC-based format)
+
+Select the feature/task template based on the detected product (see Product Detection above).
 
 Follow the exact structure from the template. Do not use free-form markdown headers (`##`), tables, or code blocks for top-level structure.
 
