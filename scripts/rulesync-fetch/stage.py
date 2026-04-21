@@ -292,14 +292,26 @@ def stage(dry_run: bool = False) -> set[Path]:
         # Computed as the set difference between what *any* plugin in the
         # manifest might contribute and what we actually staged for the
         # current product.
+        #
+        # Tracked files are skipped: a filename in the candidate stale set may
+        # coincide with a local rule that predates the plugin sharing the same
+        # filename (e.g. ag-grid's local .rulesync/rules/benchmarks.md vs the
+        # ag-charts plugin's benchmarks.md guide). The local version is the
+        # authoritative source for whichever product tracks it; staging should
+        # never clobber it.
+        tracked = _tracked_files()
         all_possible = _stageable_paths(manifest["plugins"])
         for stale in sorted(all_possible - staged):
+            rel = stale.relative_to(REPO_ROOT) if stale.is_absolute() else stale
+            if rel in tracked:
+                print(f"  keeping tracked {rel} (not a stage-leftover)", file=sys.stderr)
+                continue
             if stale.is_symlink() or stale.is_file():
                 stale.unlink()
-                print(f"  removed stale {stale.relative_to(REPO_ROOT)}", file=sys.stderr)
+                print(f"  removed stale {rel}", file=sys.stderr)
             elif stale.is_dir():
                 shutil.rmtree(stale)
-                print(f"  removed stale {stale.relative_to(REPO_ROOT)}/", file=sys.stderr)
+                print(f"  removed stale {rel}/", file=sys.stderr)
 
         MARKER.write_text(
             "# Managed by external/ag-shared/scripts/rulesync-fetch/stage.py\n"
@@ -308,6 +320,27 @@ def stage(dry_run: bool = False) -> set[Path]:
 
     print(f"Staged {len(staged)} items into .rulesync/", file=sys.stderr)
     return staged
+
+
+def _tracked_files() -> set[Path]:
+    """Return paths in .rulesync/ that git currently tracks, relative to the
+    repo root. Used by the stale-cleanup pass to avoid deleting genuine local
+    content that shares a filename with a plugin-contributed item.
+
+    Returns an empty set if git is unavailable or the repo isn't initialised
+    (preserves previous behaviour for one-off sandbox runs)."""
+    import subprocess
+
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(REPO_ROOT), "ls-files", ".rulesync/"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return set()
+    return {Path(line) for line in result.stdout.splitlines() if line}
 
 
 def _stageable_paths(plugins: dict) -> set[Path]:
