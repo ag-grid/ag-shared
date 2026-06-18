@@ -1,5 +1,9 @@
 // Projects whose file changes are never processed by the watch loop.
-const BASE_IGNORED_PROJECTS = ['all'];
+// ag-website-shared is consumed by the docs site as source (Astro plugins + src
+// imported by relative path), so Vite/Astro HMR serves its changes directly — it has
+// no nx `build` target, and the catch-all branch in getProjectBuildTargets would
+// otherwise fire a non-existent `ag-website-shared:build`.
+const BASE_IGNORED_PROJECTS = ['all', 'ag-website-shared'];
 const PACKAGE_PROJECTS = ['ag-studio'];
 const EXAMPLE_GENERATOR_PROJECTS = ['ag-studio-generate-example-files'];
 
