@@ -69,6 +69,27 @@ The first squash of a long-lived branch rewrites the whole thing, so that push i
 
 - [ ] None. The env contract and the workflow step are unchanged; sync the script.
 
+## 2026-08-11 -- PR preview publishing works on any branch, not just the Pages one
+
+**Branch:** `at/snapshot-review-raw-branch`
+
+### Changes
+
+- **[github]** `pr-preview-lib/gh-pages-commit.sh`: emits a `commit_sha` output (when `GITHUB_OUTPUT` is set) naming the branch tip that carries this operation's content, on both the pushed and the already-identical paths. Callers that link to published files by immutable commit — a `raw.githubusercontent.com` URL, say — need this: the branch name alone is served with a cache TTL and moves under any link already shared.
+- **[github]** `pr-preview-publish`: surfaces that as a `commit_sha` action output. Empty when nothing was published (PR already closed, or no files found), which callers can use to distinguish a real publish from a skip.
+- **[github]** `pr-preview-janitor`: a publish branch that does not exist yet is now "nothing to sweep" (exit 0) rather than a failed run. A branch is created lazily by its first publish, so a scheduled sweep legitimately runs before one exists. A listing that fails for any other reason still aborts rather than guessing. The existence probe uses a token-auth remote, so it works in private repos.
+- **[github]** `pr-preview-publish` / `pr-preview-cleanup`: names and descriptions generalised — they were written as if gh-pages were the only possible target, which the `publish_branch` input has not been true of for a while.
+
+### Migration Actions
+
+- [ ] None required — all changes are additive or fix a failure mode. Existing callers keep working unchanged.
+
+### Notes
+
+The motivating use case in ag-charts: snapshot-review HTML reports moved off `gh-pages` onto a plain `snapshot-review` branch and are read straight from `raw.githubusercontent.com` by a static viewer. GitHub Pages rebuilds the whole site per push with single-flight builds, so a report took 163-706s to become visible and a later push could cancel the build serving it outright; a plain branch push is readable in ~0.4s and triggers no build. The trade is that raw serves `text/plain`, so the report needs a viewer page to render it.
+
+---
+
 ## 2026-08-10 -- PR previews stop publishing source maps, and stop resurrecting cleaned-up directories
 
 **Branch:** `review-pr-snapshot-report-publishing-ab2d`
