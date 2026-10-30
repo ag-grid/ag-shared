@@ -129,7 +129,6 @@ The JIRA-on-merge workflows mention reviewers through a hand-maintained `GH_USER
 - [ ] ag-grid: once that is merged and a run shows the mentions, delete the `GH_USER_JIRA_MAPPING` repo secret.
 - [ ] ag-charts: none (no JIRA-on-merge workflow).
 - [ ] New people need a `Jira Account ID` in the Notion user directory (the account ID at the end of their Jira profile URL), or JIRA comments name them by GitHub login.
-
 ## 2026-10-30 -- Every new worktree gets the COW clone, through a post-checkout hook
 
 **Branch:** `AG-3390-cow-worktree-setup` (ag-charts)
@@ -178,7 +177,6 @@ Yarn 4 runs a workspace's `preinstall` script after it has linked `node_modules`
 ### Migration Actions
 
 - [ ] None.
-
 ## 2026-10-21 -- Watch build:types runs in a background lane
 
 **Branch:** `at/watch-background-types-lane` (ag-charts)
