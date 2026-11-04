@@ -129,6 +129,21 @@ The JIRA-on-merge workflows mention reviewers through a hand-maintained `GH_USER
 - [ ] ag-grid: once that is merged and a run shows the mentions, delete the `GH_USER_JIRA_MAPPING` repo secret.
 - [ ] ag-charts: none (no JIRA-on-merge workflow).
 - [ ] New people need a `Jira Account ID` in the Notion user directory (the account ID at the end of their Jira profile URL), or JIRA comments name them by GitHub login.
+
+## 2026-11-03 -- Per-repo PR Nx cache threshold and optional yarn cache save
+
+**Branch:** `at/ci-nx-cache-pr-threshold` (ag-charts)
+
+### Changes
+
+- **[github]** `tidy-nx-cache`: new `pr_threshold_mb` input, default 700MB as before.
+- **[github]** `setup-nx-core`: new `tidy_nx_cache_pr_threshold_mb` input, passed to `tidy-nx-cache`, and new `save_yarn_cache` input, default `true`. Setting it to `false` skips hollowing and saving the yarn cache but still restores it.
+
+### Migration Actions
+
+- [ ] ag-grid, ag-studio: no change needed, the defaults keep current behaviour. To adopt, pass both inputs through the repo's `setup-nx` wrapper.
+- [ ] Run `./external/ag-shared/scripts/setup-prompts/setup-prompts.sh`
+- [ ] Run `./external/ag-shared/scripts/setup-prompts/verify-rulesync.sh`
 ## 2026-10-30 -- Every new worktree gets the COW clone, through a post-checkout hook
 
 **Branch:** `AG-3390-cow-worktree-setup` (ag-charts)
