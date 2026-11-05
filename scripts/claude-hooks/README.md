@@ -29,6 +29,11 @@ new design tracks edits cheaply, formats once at turn end, and gates commits.
 - **Benign `no files matching`:** files nx can't map to a project (e.g. root
   configs) are treated as already-OK rather than surfaced as errors — this
   removes the dominant historical failure class.
+- **Length-capped batches:** `format-tracked.sh` splits `--files` into values of
+  at most 500 characters. A value over about 1,000 characters, easily reached
+  with worktree paths, has been seen to get nx killed at launch with exit 137
+  and no output. The cause is unconfirmed. A kill is reported separately from a
+  formatting error, and only the files in a failed batch are retried.
 - **Canonical formatter:** uses `nx format` / `nx format:check` so output
   matches the rest of the toolchain (CI, manual `yarn nx format`).
 
