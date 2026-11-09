@@ -73,7 +73,6 @@ Draft PRs skip CI, so `/ci` dispatches `ci.yml` on the branch. A dispatch has no
 - [ ] Callers on a dispatch that need the PR's changed files (a `dorny/paths-filter` step runs on `pull_request` only) should read `gh api repos/<repo>/pulls/<n>/files`, as ag-charts' `detect-changes` does for `locale`.
 
 ---
-
 ## 2026-11-06 -- Allow the v2 Atlassian read tools in the Claude permission template
 
 **Branch:** `AG-19137-atlassian-v2-allowlist` (ag-shared, AG-19137)
@@ -108,6 +107,18 @@ Only read-only tools are allowed. `executeWrite`, `executeDestructive`, `addGrap
 
 - [ ] The repo's `tsconfig.base.json` must pair `module` and `moduleResolution` validly, since the spec config no longer overrides `module`.
 - [ ] The repo runs Node 22.17 or later (`fs.globSync`).
+
+## 2026-10-26 -- Drop an unused eslint-disable from the e2e shard script
+
+**Branch:** `reduce-checks-warnings` (ag-grid)
+
+### Changes
+
+- **[scripts]** `scripts/shard/assign-e2e-shards.js` drops `no-console` from its `eslint-disable` header: no consuming repo's ESLint config enables `no-console` for that file, so ESLint reported the directive as unused.
+
+### Migration Actions
+
+- [ ] None.
 ## 2026-11-05 -- GitHub to JIRA user mapping read from the Notion user directory
 
 **Branch:** `AS-869-notion-jira-user-mapping` (ag-studio)
