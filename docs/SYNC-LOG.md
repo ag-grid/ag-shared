@@ -72,6 +72,7 @@ Draft PRs skip CI, so `/ci` dispatches `ci.yml` on the branch. A dispatch has no
 - [ ] Callers on a dispatch that need the PR's changed files (a `dorny/paths-filter` step runs on `pull_request` only) should read `gh api repos/<repo>/pulls/<n>/files`, as ag-charts' `detect-changes` does for `locale`.
 
 ---
+
 ## 2026-11-06 -- Allow the v2 Atlassian read tools in the Claude permission template
 
 **Branch:** `AG-19137-atlassian-v2-allowlist` (ag-shared, AG-19137)
@@ -118,6 +119,7 @@ Only read-only tools are allowed. `executeWrite`, `executeDestructive`, `addGrap
 ### Migration Actions
 
 - [ ] None.
+
 ## 2026-11-05 -- GitHub to JIRA user mapping read from the Notion user directory
 
 **Branch:** `AS-869-notion-jira-user-mapping` (ag-studio)
