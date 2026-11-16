@@ -108,18 +108,6 @@ Only read-only tools are allowed. `executeWrite`, `executeDestructive`, `addGrap
 - [ ] The repo's `tsconfig.base.json` must pair `module` and `moduleResolution` validly, since the spec config no longer overrides `module`.
 - [ ] The repo runs Node 22.17 or later (`fs.globSync`).
 
-## 2026-10-26 -- Drop an unused eslint-disable from the e2e shard script
-
-**Branch:** `reduce-checks-warnings` (ag-grid)
-
-### Changes
-
-- **[scripts]** `scripts/shard/assign-e2e-shards.js` drops `no-console` from its `eslint-disable` header: no consuming repo's ESLint config enables `no-console` for that file, so ESLint reported the directive as unused.
-
-### Migration Actions
-
-- [ ] None.
-
 ## 2026-11-05 -- GitHub to JIRA user mapping read from the Notion user directory
 
 **Branch:** `AS-869-notion-jira-user-mapping` (ag-studio)
@@ -220,6 +208,7 @@ Yarn 4 runs a workspace's `preinstall` script after it has linked `node_modules`
 ### Migration Actions
 
 - [ ] None.
+
 ## 2026-10-21 -- Watch build:types runs in a background lane
 
 **Branch:** `at/watch-background-types-lane` (ag-charts)
