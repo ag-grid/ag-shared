@@ -83,6 +83,27 @@ inputs:
     nx_cache_hash:
         description: 'Precomputed hashFiles() value keying the Nx cache. Computed by the wrapper because hashFiles() needs literal glob arguments.'
         required: true
+    nx_cache_scheme:
+        description: >-
+            How the Nx cache is shared. legacy: one per-commit cache, saved at the end of rw jobs.
+            merged: restore the base branch cache merged with this PR or branch cache; jobs save
+            nothing themselves, but upload parts (nx-cache-part) that one job merges and saves
+            (nx-cache-save).
+        required: false
+        default: 'legacy'
+        options:
+            - 'legacy'
+            - 'merged'
+    nx_cache_merge_base:
+        description: >-
+            merged only: merge the base branch cache into a PR or branch cache. Set false on the job
+            that runs nx-cache-save, so a PR saves only its own entries; parts already leave base
+            entries out.
+        required: false
+        default: 'true'
+        options:
+            - 'true'
+            - 'false'
 
 outputs:
     base:
@@ -215,7 +236,7 @@ runs:
         - name: Cache Nx
           # Post-save works here only because `path` is a literal (see "Restore node_modules");
           # do not parameterise it via inputs.
-          if: inputs.cache_mode == 'rw' && inputs.nx_restore != 'false'
+          if: inputs.cache_mode == 'rw' && inputs.nx_restore != 'false' && inputs.nx_cache_scheme != 'merged'
           uses: actions/cache@v6
           with:
               path: |
@@ -225,7 +246,7 @@ runs:
               restore-keys: cache-nx-v20-${{ inputs.nx_cache_hash }}-
 
         - name: Restore Nx
-          if: inputs.cache_mode == 'ro' && inputs.nx_restore != 'false'
+          if: inputs.cache_mode == 'ro' && inputs.nx_restore != 'false' && inputs.nx_cache_scheme != 'merged'
           id: cache_nx_ro
           uses: actions/cache/restore@v6
           with:
@@ -235,6 +256,85 @@ runs:
               key: cache-nx-v20-${{ inputs.nx_cache_hash }}-${{ github.sha }}
               restore-keys: cache-nx-v20-${{ inputs.nx_cache_hash }}-
               # fail-on-cache-miss: true
+
+        - name: Nx cache scope
+          # Base-branch runs save under `branch-<name>`; PRs and other branches under their own
+          # scope. GitHub restores a PR's own caches before its base branch's, so distinct prefixes
+          # keep a PR's caches from hiding newer base-branch ones, and naming the base branch keeps
+          # a release-branch PR from restoring the default branch's cache. Other bases, such as
+          # `next`, may have no push CI to save a cache, so they fall back to the default branch's.
+          if: inputs.cache_mode != 'off' && inputs.nx_restore != 'false' && inputs.nx_cache_scheme == 'merged'
+          id: nx_scope
+          shell: bash
+          env:
+              BRANCH_TYPE: ${{ steps.nx_config.outputs.type }}
+              PR_NUMBER: ${{ github.event.pull_request.number }}
+              TARGET_BRANCH: ${{ github.base_ref || github.event.repository.default_branch }}
+              DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+              NX_CACHE_HASH: ${{ inputs.nx_cache_hash }}
+          run: |
+              sanitise() { printf '%s' "$1" | tr -c 'A-Za-z0-9._-' '-' ; }
+              if [[ ${BRANCH_TYPE} == 'latest' || ${BRANCH_TYPE} == 'release' ]] ; then
+                base="branch-$(sanitise "${GITHUB_REF_NAME}")"
+                scope="${base}"
+              else
+                base="branch-$(sanitise "${TARGET_BRANCH}")"
+                if [[ ${TARGET_BRANCH} != "${DEFAULT_BRANCH}" && ! ${TARGET_BRANCH} =~ ^b[0-9]+\.[0-9]+\.[0-9]+$ ]] ; then
+                  echo "fallback=cache-nx-v21-branch-$(sanitise "${DEFAULT_BRANCH}")" >> "$GITHUB_OUTPUT"
+                fi
+                if [[ -n ${PR_NUMBER} ]] ; then
+                  scope="pr-${PR_NUMBER}"
+                else
+                  scope="ref-$(sanitise "${GITHUB_REF_NAME}")"
+                fi
+              fi
+              {
+                echo "scope=${scope}"
+                echo "base=cache-nx-v21-${base}"
+                echo "own=cache-nx-v21-${scope}"
+                echo "separate=$([[ ${scope} == "${base}" ]] && echo false || echo true)"
+              } >> "$GITHUB_OUTPUT"
+              # GitHub caches are immutable, so each run, and each re-run of it, saves under its own
+              # key; a later run on the same commit can then publish the entries it adds.
+              echo "NX_CACHE_SAVE_KEY=cache-nx-v21-${scope}-${NX_CACHE_HASH}-${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_ENV"
+
+        - name: Restore base-branch Nx cache
+          if: steps.nx_scope.outputs.scope && (steps.nx_scope.outputs.separate != 'true' || inputs.nx_cache_merge_base != 'false')
+          uses: actions/cache/restore@v6
+          with:
+              path: |
+                  .nx/cache
+                  .nx/workspace-data
+              key: ${{ steps.nx_scope.outputs.base }}-${{ inputs.nx_cache_hash }}-${{ github.sha }}
+              restore-keys: |
+                  ${{ steps.nx_scope.outputs.base }}-${{ inputs.nx_cache_hash }}-${{ github.sha }}-
+                  ${{ steps.nx_scope.outputs.base }}-${{ inputs.nx_cache_hash }}-
+                  ${{ steps.nx_scope.outputs.base }}-
+                  ${{ steps.nx_scope.outputs.fallback && format('{0}-{1}-', steps.nx_scope.outputs.fallback, inputs.nx_cache_hash) || '' }}
+                  ${{ steps.nx_scope.outputs.fallback && format('{0}-', steps.nx_scope.outputs.fallback) || '' }}
+
+        - name: Set aside base-branch Nx cache
+          # Merged after install, so the tidy step below never resets it.
+          if: steps.nx_scope.outputs.separate == 'true' && inputs.nx_cache_merge_base != 'false'
+          shell: bash
+          run: |
+              mkdir -p "${RUNNER_TEMP}/nx-base"
+              for dir in cache workspace-data ; do
+                if [[ -d ".nx/${dir}" ]] ; then mv ".nx/${dir}" "${RUNNER_TEMP}/nx-base/${dir}" ; fi
+              done
+
+        - name: Restore own Nx cache
+          if: steps.nx_scope.outputs.separate == 'true'
+          uses: actions/cache/restore@v6
+          with:
+              path: |
+                  .nx/cache
+                  .nx/workspace-data
+              key: ${{ steps.nx_scope.outputs.own }}-${{ inputs.nx_cache_hash }}-${{ github.sha }}
+              restore-keys: |
+                  ${{ steps.nx_scope.outputs.own }}-${{ inputs.nx_cache_hash }}-${{ github.sha }}-
+                  ${{ steps.nx_scope.outputs.own }}-${{ inputs.nx_cache_hash }}-
+                  ${{ steps.nx_scope.outputs.own }}-
 
         - name: Setup Node.js
           id: setup_node
@@ -385,6 +485,11 @@ runs:
           if: inputs.cache_mode != 'off' && inputs.nx_restore != 'false'
           shell: bash
           run: node "${{ github.action_path }}/nx-cache-db.mjs" adopt "${RUNNER_TEMP}/nx-cache-state.json"
+
+        - name: Merge base-branch Nx cache
+          if: steps.nx_scope.outputs.separate == 'true' && inputs.nx_cache_merge_base != 'false'
+          shell: bash
+          run: node "${{ github.action_path }}/nx-cache-db.mjs" merge "${RUNNER_TEMP}/nx-cache-state.json" "${RUNNER_TEMP}/nx-base"
 
         - name: Save node_modules
           # Explicit save of the freshly installed tree (see "Restore node_modules" for

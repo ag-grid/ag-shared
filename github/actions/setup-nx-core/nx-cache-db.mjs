@@ -2,12 +2,15 @@
 // entries only count once their rows are in this machine's DB. Run from the workspace root:
 //   snapshot <state>          before anything runs nx: record the restored DBs
 //   adopt <state>             after install: import restored rows into this machine's DB
-//   export <state> <out>      write the entries this job created as a part at <out>
-//   merge <state> <src>...    import parts, or other restored .nx directories, into the cache
+//   export <state> <out>      write the entries this job created as a part at <out>; leaves out
+//                             tasks named in NX_CACHE_EXCLUDE (`project:target`, comma or newline separated)
+//   merge <state> <src>...    import parts, or other restored .nx directories, into the cache; sets
+//                             the step output `imported` to how many entries Nx can now hit that it couldn't
+//   trim <state> <max-mb>     delete the oldest entries until the cache fits in <max-mb>
 // <out> and each <src> share the layout of `.nx`: `cache/` and `workspace-data/*.db`.
 // Never fails the job: problems become warning annotations and the job keeps the cache it has.
 import { execFileSync } from 'node:child_process';
-import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
 
 const DB_FILE = /-v\d+\.db$/;
@@ -238,9 +241,7 @@ async function adopt(stateFile) {
         return;
     }
     // An entry whose directory is missing is a miss to Nx; leaving it out lets the rebuilt one export.
-    const baseline = (await cachedHashes(join(workspaceDataDir, currentDb))).filter((hash) =>
-        hasEntry(cacheDir, hash)
-    );
+    const baseline = await presentHashes(join(workspaceDataDir, currentDb));
     writeState(stateFile, { ...state, currentDb, baseline });
 }
 
@@ -251,20 +252,48 @@ function currentDbPath(state) {
     return join(workspaceDataDir, state.currentDb);
 }
 
+async function excludedHashes(dbPath) {
+    const tasks = (process.env.NX_CACHE_EXCLUDE ?? '')
+        .split(/[\s,]+/)
+        .filter(Boolean);
+    if (tasks.length === 0) {
+        return new Set();
+    }
+    const db = await openDb(dbPath);
+    try {
+        const rows = db
+            .prepare(
+                `SELECT hash FROM task_details WHERE project || ':' || target IN (${tasks.map(() => '?').join(', ')})`
+            )
+            .all(...tasks);
+        return new Set(rows.map(({ hash }) => hash));
+    } finally {
+        db.close();
+    }
+}
+
 async function exportPart(stateFile, outDir) {
     const state = readState(stateFile);
     const sourceDb = currentDbPath(state);
     const baseline = new Set(state.baseline);
     // A restored entry that is still missing its directory was not rebuilt here.
-    const created = (await cachedHashes(sourceDb)).filter(
+    const candidates = (await cachedHashes(sourceDb)).filter(
         (hash) => !baseline.has(hash) && hasEntry(cacheDir, hash)
     );
+    const excluded = await excludedHashes(sourceDb);
+    const created = candidates.filter((hash) => !excluded.has(hash));
 
     const overlaps = (a, b) => a === b || a.startsWith(b + sep) || b.startsWith(a + sep);
     if ([cacheDir, workspaceDataDir].some((dir) => overlaps(outDir, dir))) {
         throw new Error(`${outDir} overlaps the live Nx cache; export to a separate directory.`);
     }
     rmSync(outDir, { recursive: true, force: true });
+    const left = candidates.length - created.length;
+    const excludedNote = left ? `, leaving out ${left} excluded` : '';
+    if (created.length === 0) {
+        console.log(`No new Nx cache entries to export${excludedNote}.`);
+        return;
+    }
     const outData = join(outDir, 'workspace-data');
     mkdirSync(join(outDir, 'cache', 'terminalOutputs'), { recursive: true });
     mkdirSync(outData, { recursive: true });
@@ -284,11 +313,18 @@ async function exportPart(stateFile, outDir) {
     for (const hash of created) {
         copyEntry(cacheDir, join(outDir, 'cache'), hash);
     }
-    console.log(`Exported ${created.length} new Nx cache entries to ${outDir}.`);
+    console.log(`Exported ${created.length} new Nx cache entries to ${outDir}${excludedNote}.`);
+}
+
+/** Hashes in `dbPath` whose entry directory exists: what Nx can hit. */
+async function presentHashes(dbPath) {
+    return (await cachedHashes(dbPath)).filter((hash) => hasEntry(cacheDir, hash));
 }
 
 async function merge(stateFile, sources) {
-    const targetDb = currentDbPath(readState(stateFile));
+    const state = readState(stateFile);
+    const targetDb = currentDbPath(state);
+    const before = (await presentHashes(targetDb)).length;
     for (const source of sources) {
         const sourceData = join(source, 'workspace-data');
         const sourceCache = join(source, 'cache');
@@ -321,6 +357,69 @@ async function merge(stateFile, sources) {
             }
         }
     }
+    const present = await presentHashes(targetDb);
+    // Merged entries were restored, not created here, so export must not count them as new.
+    writeState(stateFile, { ...state, baseline: present });
+    if (process.env.GITHUB_OUTPUT) {
+        appendFileSync(process.env.GITHUB_OUTPUT, `imported=${present.length - before}\n`);
+    }
+}
+
+/** Bytes in the files under `path`. */
+function sizeOf(path) {
+    const stat = lstatSync(path, { throwIfNoEntry: false });
+    if (!stat?.isDirectory()) {
+        return stat?.size ?? 0;
+    }
+    return readdirSync(path).reduce((total, name) => total + sizeOf(join(path, name)), 0);
+}
+
+async function trim(stateFile, maxMb) {
+    const limit = Number(maxMb) * 1024 * 1024;
+    if (!(limit > 0)) {
+        throw new Error(`Invalid cache size limit "${maxMb}".`);
+    }
+    if (!existsSync(cacheDir)) {
+        return;
+    }
+    const db = await openDb(currentDbPath(readState(stateFile)));
+    try {
+        // Cache hits in other jobs never reach this DB, so creation time is the best age we have.
+        const hashes = db
+            .prepare('SELECT hash FROM cache_outputs ORDER BY created_at, hash')
+            .all()
+            .map(({ hash }) => hash)
+            .filter((hash) => VALID_HASH.test(hash));
+        const known = new Set(hashes);
+        const before = sizeOf(cacheDir);
+        let total = before;
+        const removeEntry = (hash) => {
+            for (const path of [join(cacheDir, hash), join(cacheDir, 'terminalOutputs', hash)]) {
+                total -= sizeOf(path);
+                rmSync(path, { recursive: true, force: true });
+            }
+        };
+        // Entries without a row are misses to Nx, so they go first.
+        const orphans = readdirSync(cacheDir).filter((name) => VALID_HASH.test(name) && !known.has(name));
+        orphans.forEach(removeEntry);
+        const deleteRow = db.prepare('DELETE FROM cache_outputs WHERE hash = ?');
+        let removed = 0;
+        for (const hash of hashes) {
+            if (total <= limit) {
+                break;
+            }
+            // Row first: an interrupted trim leaves an orphan, which the next trim removes.
+            deleteRow.run(hash);
+            removeEntry(hash);
+            ++removed;
+        }
+        const mb = (bytes) => Math.round(bytes / 1024 / 1024);
+        console.log(
+            `Nx cache was ${mb(before)} MB; removed ${removed} oldest entries and ${orphans.length} without a row, leaving ${mb(total)} MB (limit ${maxMb} MB).`
+        );
+    } finally {
+        db.close();
+    }
 }
 
 const [mode, stateFile, ...rest] = process.argv.slice(2);
@@ -336,6 +435,8 @@ try {
         await exportPart(stateFile, resolve(rest[0]));
     } else if (mode === 'merge' && rest.length > 0) {
         await merge(stateFile, rest.map((source) => resolve(source)));
+    } else if (mode === 'trim' && rest.length === 1) {
+        await trim(stateFile, rest[0]);
     } else {
         throw new Error(`Unknown or incomplete command "${mode}".`);
     }
