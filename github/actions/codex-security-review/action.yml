@@ -57,6 +57,10 @@ inputs:
         description: 'How many shards to review at once. Reviews mostly wait on the Codex API; keep it low enough to stay inside Codex rate limits.'
         required: false
         default: '3'
+    rate-limit-retries:
+        description: 'How many times to retry a shard that Codex rate-limits, waiting 60s, 120s, 240s... between attempts. Running out of quota is never retried.'
+        required: false
+        default: '3'
     review-budget-minutes:
         description: 'Time limit for all shards together. Keep it below the job timeout so the report still runs; shards that would start with less than 5 minutes left are reported as out-of-time.'
         required: false
@@ -140,6 +144,7 @@ runs:
               SHARD_TIMEOUT_MINUTES: ${{ inputs.shard-timeout-minutes }}
               REVIEW_BUDGET_MINUTES: ${{ inputs.review-budget-minutes }}
               PARALLEL_SHARDS: ${{ inputs.parallel-shards }}
+              RATE_LIMIT_RETRIES: ${{ inputs.rate-limit-retries }}
           run: '"$GITHUB_ACTION_PATH/run-shards.sh"'
 
         - name: Report to Slack

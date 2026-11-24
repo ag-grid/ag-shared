@@ -11,6 +11,11 @@
 ## Up to $PARALLEL_SHARDS shards run at once. Each review mostly waits on the Codex API, so this
 ## cuts the run to roughly the slowest shards rather than the sum of all of them.
 ##
+## A shard that Codex rate-limits is retried up to $RATE_LIMIT_RETRIES times, waiting
+## $RATE_LIMIT_BACKOFF_SECONDS, then twice that, and so on (plus up to 30s of jitter so retrying
+## shards don't line up again). Running out of quota (insufficient_quota) is not retried: waiting
+## won't fix it.
+##
 ## All shards share a budget of $REVIEW_BUDGET_MINUTES, so the job still has time to report what
 ## finished before it hits its own timeout. Each shard gets at most $SHARD_TIMEOUT_MINUTES or what
 ## is left of the budget, and shards with less than 5 minutes left are not started (out-of-time).
@@ -70,6 +75,8 @@ record_status() {
 SHARD_TIMEOUT_MINUTES=${SHARD_TIMEOUT_MINUTES:-45}
 REVIEW_BUDGET_MINUTES=${REVIEW_BUDGET_MINUTES:-300}
 PARALLEL_SHARDS=${PARALLEL_SHARDS:-3}
+RATE_LIMIT_RETRIES=${RATE_LIMIT_RETRIES:-3}
+RATE_LIMIT_BACKOFF_SECONDS=${RATE_LIMIT_BACKOFF_SECONDS:-60}
 MIN_SHARD_MINUTES=5
 
 # A zero, negative or non-numeric value would hang the scheduler or break the time budget
@@ -81,10 +88,24 @@ do
         exit 1
     fi
 done
+for setting in RATE_LIMIT_RETRIES RATE_LIMIT_BACKOFF_SECONDS
+do
+    if ! [[ "${!setting}" =~ ^[0-9]+$ ]]
+    then
+        echo "::error::$setting must be a non-negative integer, got [${!setting}]"
+        exit 1
+    fi
+done
+
+# Classify a failed Codex run from its log. The log is never printed (see the header).
+# Quota is checked first: an exhausted quota is also reported as a 429.
+log_says_quota() { grep -qiE "(insufficient_quota|exceeded your current quota)" "$1"; }
+log_says_rate_limited() { grep -qiE "(rate.?limit|429|too many requests)" "$1"; }
 
 # Reviews one shard. Runs in the background, so it reports only through its status file.
 review_shard() {
     local name=$1 shard focus p paths paths_json prompt_file output_file log_file remaining shard_minutes start exit_code duration
+    local attempt=0 delay
 
     shard=$(jq -c --arg name "$name" '.shards[] | select(.name == $name)' "$SHARDS_FILE")
     focus=$(jq -r '.focus // ""' <<< "$shard")
@@ -139,20 +160,42 @@ review_shard() {
         record_status "$name" out-of-time "$paths_json"
         return
     fi
-    shard_minutes=$(( remaining < SHARD_TIMEOUT_MINUTES ? remaining : SHARD_TIMEOUT_MINUTES ))
 
-    echo "Reviewing shard [$name] (up to ${shard_minutes}m): ${paths[*]}"
+    echo "Reviewing shard [$name]: ${paths[*]}"
     start=$SECONDS
-
-    set +e
-    # Own Codex home per shard, so concurrent sessions don't share state. SIGTERM at the limit,
-    # SIGKILL 30s later if Codex hasn't exited.
     mkdir -p "$CODEX_HOME/$name"
-    CODEX_HOME="$CODEX_HOME/$name" timeout --kill-after=30 "$(( shard_minutes * 60 ))" \
-        codex exec "${CODEX_ARGS[@]}" --output-last-message "$output_file" - \
-        < "$prompt_file" > "$log_file" 2>&1
-    exit_code=$?
-    set -e
+
+    while true
+    do
+        remaining=$(( REVIEW_BUDGET_MINUTES - SECONDS / 60 ))
+        shard_minutes=$(( remaining < SHARD_TIMEOUT_MINUTES ? remaining : SHARD_TIMEOUT_MINUTES ))
+
+        set +e
+        # Own Codex home per shard, so concurrent sessions don't share state. SIGTERM at the limit,
+        # SIGKILL 30s later if Codex hasn't exited.
+        rm -f "$output_file"
+        CODEX_HOME="$CODEX_HOME/$name" timeout --kill-after=30 "$(( shard_minutes * 60 ))" \
+            codex exec "${CODEX_ARGS[@]}" --output-last-message "$output_file" - \
+            < "$prompt_file" > "$log_file" 2>&1
+        exit_code=$?
+        set -e
+
+        # Retry only a rate limit, and only while the retry still leaves a usable slot in the budget
+        if [ "$exit_code" -ne 0 ] && [ "$exit_code" -ne 124 ] && [ "$exit_code" -ne 137 ] \
+            && [ "$attempt" -lt "$RATE_LIMIT_RETRIES" ] \
+            && ! log_says_quota "$log_file" && log_says_rate_limited "$log_file"
+        then
+            delay=$(( RATE_LIMIT_BACKOFF_SECONDS * (1 << attempt) + RANDOM % 30 ))
+            if [ $(( REVIEW_BUDGET_MINUTES - (SECONDS + delay) / 60 )) -ge "$MIN_SHARD_MINUTES" ]
+            then
+                attempt=$(( attempt + 1 ))
+                echo "::warning::Shard [$name] was rate limited - retrying in ${delay}s (retry ${attempt} of ${RATE_LIMIT_RETRIES})"
+                sleep "$delay"
+                continue
+            fi
+        fi
+        break
+    done
 
     duration=$(( (SECONDS - start) / 60 ))
 
@@ -167,9 +210,12 @@ review_shard() {
         if grep -qE "(invalid_api_key|token_expired|401 Unauthorized|Incorrect API key)" "$log_file"
         then
             echo "::error::Shard [$name]: authentication failure - the CODEX_API_KEY secret is likely invalid or expired"
-        elif grep -qiE "(rate limit|429|quota)" "$log_file"
+        elif log_says_quota "$log_file"
         then
-            echo "::error::Shard [$name]: Codex was rate limited or ran out of quota"
+            echo "::error::Shard [$name]: the Codex API key's organisation is out of quota (insufficient_quota) - raise its usage limit; retrying won't help"
+        elif log_says_rate_limited "$log_file"
+        then
+            echo "::error::Shard [$name]: Codex was still rate limited after ${attempt} retries"
         elif grep -qiE "(bwrap|landlock|sandbox)" "$log_file"
         then
             echo "::error::Shard [$name]: the Codex sandbox failed to start or run a command"
